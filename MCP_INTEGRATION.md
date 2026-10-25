@@ -21,6 +21,27 @@
 | SDK | `@modelcontextprotocol/sdk`（官方 TypeScript SDK） |
 | 服务端实际声明工具数 | **35 个**（实测，远超官方文档早期列的 13 个） |
 
+### 声明式配置示例
+
+仓库根目录的 [`mcp-config.example.json`](mcp-config.example.json) 是符合 MCP 宿主规范的标准声明式配置，
+凭证只用环境变量占位符：
+
+```json
+{
+  "mcpServers": {
+    "mcd-mcp": {
+      "type": "streamablehttp",
+      "url": "https://mcp.mcd.cn",
+      "headers": { "Authorization": "Bearer ${MCD_MCP_TOKEN}" }
+    }
+  }
+}
+```
+
+这份文件用于在 WorkBuddy / Claude 等宿主里直接挂载 mcd-mcp，**本项目运行时不读它**。
+本项目自身走的是「Token 由用户登录时提供、服务端加密代持」的路径，
+只通过 `MCP_ENDPOINT` 环境变量配置端点，Token 在运行时注入（见下）。
+
 ### 客户端接入代码
 
 连接由 `server/src/mcp/gateway.ts` 统一管理：

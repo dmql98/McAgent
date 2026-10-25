@@ -60,6 +60,46 @@ WaytoAGI 1024 超能 Coding 周末 · 用餐赛道
 - **Node.js ≥ 22**（用了内置 `node:sqlite`，编译零依赖）
 - 一个麦当劳 MCP Token：打开 [open.mcd.cn](https://open.mcd.cn) 扫码登录 → 控制台激活 → 复制 Token
 
+### 1.1 MCP 怎么配
+
+仓库根目录的 [`mcp-config.example.json`](mcp-config.example.json) 是 MCP 连接配置示例，
+所有凭证都用环境变量占位符（`${MCD_MCP_TOKEN}`），文件里没有任何真实 Token。
+
+**两种用法，注意区分：**
+
+**① 在 WorkBuddy / Claude 等 MCP 宿主里直接跑（推荐用于体验 MCP 能力）**
+
+把示例里的占位符换成本机环境变量名，粘进宿主的连接器配置即可：
+
+```json
+{
+  "mcpServers": {
+    "mcd-mcp": {
+      "type": "streamablehttp",
+      "url": "https://mcp.mcd.cn",
+      "headers": { "Authorization": "Bearer ${MCD_MCP_TOKEN}" }
+    }
+  }
+}
+```
+
+**② 跑本项目（Token 不进配置文件）**
+
+本项目**不需要**把 Token 写进 `mcp-config.example.json`。
+架构上 Token 由用户登录时粘贴一次，服务端用 AES-256-GCM 加密落库，
+每次调用前在内存解密再注入请求头（见 `server/src/mcp/gateway.ts`）。
+
+所以你只需要在 `server/.env` 里配端点：
+
+```bash
+MCP_ENDPOINT=https://mcp.mcd.cn
+```
+
+然后启动服务，在浏览器里粘贴 Token。
+
+> ⚠️ `mcp-config.example.json` 是**给人参考格式**的，服务不会读它。
+> 真要跑本项目，改的是 `server/.env`。
+
 ### 2. 拉代码装依赖
 
 ```bash
