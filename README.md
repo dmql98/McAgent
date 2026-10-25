@@ -64,13 +64,20 @@ WaytoAGI 1024 超能 Coding 周末 · 用餐赛道
 
 ```bash
 git clone <your-repo-url> mcd-soulmate
-cd mcd-soulmate/server
-npm install
+cd mcd-soulmate
+```
+
+前后端依赖分开装（两端各自独立）：
+
+```bash
+cd server && npm install
+cd ../web && npm install
 ```
 
 ### 3. 配置环境变量
 
 ```bash
+cd ../server
 cp .env.example .env
 ```
 
@@ -85,14 +92,24 @@ openssl rand -hex 32   # → 填给 TOKEN_ENC_KEY（必须是 64 位 hex）
 
 ### 4. 构建并启动
 
+先构建前端（产物落在 `web/dist`，服务端会自动托管它）：
+
 ```bash
+cd ../web && npm run build
+```
+
+再构建并启动后端：
+
+```bash
+cd ../server
 npm run build
 npm start
 ```
 
-看到这行就成功了：
+看到这两行就成功了：
 
 ```
+静态前端：/path/to/mcd-soulmate/web/dist
 ✅ 麦门知己后端已启动 http://localhost:3000
 ```
 
@@ -100,19 +117,22 @@ npm start
 
 访问 **http://localhost:3000** → 粘贴你的 Token → 开始聊。
 
-> 开发模式用 `npm run dev`（tsx watch，改代码自动重启）。
+> 后端开发模式用 `npm run dev`（tsx watch，改代码自动重启）。
+> 前端开发模式另开一个终端 `cd web && npm run dev`（Vite HMR，默认 5173 端口，已配好 API 代理）。
 
-### 只想看看界面，没有 Token？
+### 只想看看界面，不想配 Token？
 
-前端可以完全离线跑（用 mock 数据）：
+前端内置了一套 mock 数据层，加上 `?mock=1` 就能不连后端走完三个场景：
 
 ```bash
-cd web
-python -m http.server 8080
-# 打开 http://localhost:8080
+cd web && npm run dev
+# 打开 http://localhost:5173/?mock=1
 ```
 
-任意 20 位以上的字符串都能登录成功（mock 模式不校验），三个场景都能完整演示。
+mock 模式下任意 20 位以上的字符串都能登录（不校验 Token 格式）。
+
+> ⚠️ 不能直接用 `python -m http.server` 打开 `web/index.html` ——
+> 那是 Vite 的源码入口，引用的是 `/src/main.ts`，必须经过 Vite 处理才能跑。
 
 ---
 
@@ -263,8 +283,8 @@ bash scripts/deploy.sh --no-pull          # 只重新构建，不拉代码
 
 ```
                         ┌─────────────────────────────┐
-  浏览器                 │  web/  静态前端（无框架）      │
-   │                    │  index.html · app.js · style │
+  浏览器                 │  web/  Vue 3 + Vite + TS     │
+   │                    │  17 个视图 · 手写 CSS 令牌    │
    │  POST /api/chat    └─────────────────────────────┘
    │  text/event-stream              │
    ▼                                 ▼
@@ -290,7 +310,7 @@ bash scripts/deploy.sh --no-pull          # 只重新构建，不拉代码
 └──────────────────────────────────────────────────────────┘
                               │
                               ▼
-                    麦当劳 MCP（13 个工具）
+                    麦当劳 MCP（35 个工具，调用 23 个）
 ```
 
 ### 三条关键设计决策
@@ -387,14 +407,17 @@ Agent 无法、也不应该代付。
 
 ```
 mc/
-├── web/                      前端（无框架、无构建、原生 ES module）
-│   ├── index.html            四个视图：登录 / 三连问 / 聊天 / 记忆管理
-│   ├── style.css             全部样式（含移动端抽屉、支付卡片、确认条）
-│   ├── app.js                交互逻辑（SSE 消费、组件化渲染、轮询）
-│   ├── api.js                ★ 唯一 mock/真实切换点（USE_MOCK）
-│   ├── sse.js                手动 SSE 解析器（处理跨 chunk 半截事件）
-│   ├── mock.js               mock 数据层（方法签名与真实 API 一致）
-│   └── error.js              统一 ApiError（mock 与真实共用）
+├── web/                      前端（Vue 3 + Vite + TypeScript）
+│   ├── vite.config.ts        Vite 配置（/api 代理到 3000，产物落 dist）
+│   ├── src/
+│   │   ├── views/            17 个视图：登录/引导/总览/聊天/菜单/购物车/
+│   │   │                     订单/优惠券/积分/商城/活动/派对/门店/
+│   │   │                     营养/地址/记忆/工具台
+│   │   ├── components/       CartPanel · MealDrawer · SourceBadge · Toast…
+│   │   ├── lib/              sse（跨 chunk 解析）· error · format · toast
+│   │   ├── api.ts            ★ 唯一 mock/真实切换点（?mock=1）
+│   │   └── router.ts         路由与导航元信息
+│   └── dist/                 构建产物（git 忽略，npm run build 生成）
 │
 ├── server/
 │   ├── src/
@@ -408,7 +431,7 @@ mc/
 │   │   ├── prompts/             system · fallbacks · stage-texts
 │   │   ├── routes/              auth · chat · memory · orders
 │   │   └── index.ts             装配与优雅关闭
-│   ├── tests/                  91 个单元测试
+│   ├── tests/                  311 个单元测试
 │   ├── scripts/                mcp-smoke（联调冒烟）
 │   └── ecosystem.config.js     pm2（instances: 1）
 │
@@ -426,15 +449,17 @@ mc/
 ```bash
 cd server
 
-npm test                       # 91 个单元测试
+npm test                       # 311 个单元测试
 npx tsc --noEmit               # 类型检查
-npx tsx scripts/mcp-smoke.ts <TOKEN>   # MCP 联调冒烟（13 个工具连通性）
+npx tsx scripts/mcp-smoke.ts <TOKEN>   # MCP 联调冒烟（逐个工具验证连通性）
 ```
 
+前端是 Vue 3 + Vite，类型检查与构建：
+
 ```bash
-# 前端无头 E2E（73 项，覆盖登录→三场景→下单→记忆管理→访客限额）
-cd ..
-NODE_PATH=<node_modules路径> node web/scripts/e2e.mjs
+cd web
+npm run typecheck              # vue-tsc --noEmit
+npm run build                  # 产物落 dist
 ```
 
 测试覆盖的重点：
