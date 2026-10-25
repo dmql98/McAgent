@@ -52,3 +52,10 @@ Thumbs.db
 .backup/
 tmp/
 *.tmp
+
+# 开发期临时探针脚本与响应快照（不带入发布仓库）
+server/.*.txt
+server/.*.json
+server/.*.mjs
+server/.*.ts
+!server/.env.example

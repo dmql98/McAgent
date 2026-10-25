@@ -8,7 +8,7 @@
 > 说一句话，它给你一份带理由的菜单 —— 理由里可能是"霜降了该贴秋膘"，
 > 也可能是"上周四你也是这么烦的，那天麦麦鸡治好了你"。
 
-WaytoAGI 1024 超能 Coding 周末 · 用餐赛道 ｜ 麦当劳 M-CODE 大赛
+WaytoAGI 1024 超能 Coding 周末 · 用餐赛道
 
 ---
 
@@ -454,11 +454,11 @@ MIT
 
 ---
 
-## 参赛信息
+## 项目信息
 
 - **赛事**：WaytoAGI 1024 超能 Coding 周末 · 用餐赛道
-- **同期**：麦当劳 M-CODE 大赛
 - **参赛材料**：[docs/SUBMISSION.md](docs/SUBMISSION.md) · [录屏脚本](docs/DEMO-SCRIPT.md)
+- **MCP 接入细节**：[MCP_INTEGRATION.md](MCP_INTEGRATION.md)
 
 > 「麦门知己」不是又一个点餐机器人。
 > 它记得你上周四为什么烦，记得你的可乐要去冰，记得你生日快到了。
