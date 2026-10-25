@@ -1,0 +1,33 @@
+{
+  "name": "mcd-soulmate-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "麦门知己 · 后端服务",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "test": "tsx --test tests/**/*.test.ts",
+    "smoke": "tsx scripts/mcp-smoke.ts",
+    "preflight": "tsx scripts/preflight.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.20.2",
+    "cookie-parser": "^1.4.7",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.9",
+    "@types/express": "^5.0.3",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^22.18.9",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>麦门知己 · 开发计划与进度追踪</title>
+<style>
+  :root{
+    --red:#DA291C; --red-dark:#B02015; --yellow:#FFC72C; --yellow-soft:#FFF7E0;
+    --ink:#2B2118; --ink-2:#6B5D4F; --line:#EFE4D3; --bg:#FBF7F0; --card:#fff;
+    --green:#1E7B4F; --blue:#1F5FA8; --purple:#6B4FA1;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;background:var(--bg);color:var(--ink);line-height:1.7;}
+  .hero{background:linear-gradient(135deg,var(--red),var(--red-dark));color:#fff;padding:44px 24px 38px;}
+  .hero-inner{max-width:1060px;margin:0 auto;display:flex;gap:28px;align-items:center;flex-wrap:wrap;}
+  .hero h1{font-size:28px;}
+  .hero p{font-size:13.5px;opacity:.9;margin-top:6px;}
+  .hero .badge{display:inline-block;background:var(--yellow);color:var(--ink);font-weight:700;font-size:12px;padding:2px 10px;border-radius:999px;margin-bottom:10px;}
+  .progress-hero{flex:1;min-width:280px;background:rgba(255,255,255,.14);border-radius:14px;padding:16px 20px;}
+  .progress-hero .row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px;}
+  .bar{height:12px;background:rgba(0,0,0,.25);border-radius:999px;overflow:hidden;}
+  .bar>i{display:block;height:100%;width:0%;background:var(--yellow);border-radius:999px;transition:width .4s;}
+  .wrap{max-width:1060px;margin:0 auto;padding:30px 24px 80px;}
+  section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:26px 30px;margin-bottom:22px;}
+  h2{font-size:19px;display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid var(--yellow);}
+  h2 .no{font-size:11.5px;font-weight:700;color:#fff;background:var(--red);border-radius:6px;padding:2px 8px;}
+  h3{font-size:15px;margin:18px 0 8px;color:var(--red-dark);}
+  p{margin:6px 0;font-size:13.5px;}
+  table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px;}
+  th{background:var(--yellow-soft);text-align:left;padding:8px 12px;border:1px solid var(--line);}
+  td{padding:8px 12px;border:1px solid var(--line);vertical-align:top;}
+  code{background:var(--yellow-soft);padding:1px 6px;border-radius:4px;font-size:12px;font-family:Consolas,monospace;color:var(--red-dark);}
+  .callout{border-left:4px solid var(--yellow);background:var(--yellow-soft);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;font-size:13px;}
+  .callout.blue{border-left-color:var(--blue);background:#EEF4FB;}
+  /* 里程碑卡片 */
+  .ms{border:1px solid var(--line);border-radius:12px;margin-bottom:14px;overflow:hidden;}
+  .ms-head{display:flex;align-items:center;gap:12px;padding:12px 16px;background:#FDFBF6;cursor:pointer;user-select:none;}
+  .ms-head .id{font-weight:800;color:#fff;background:var(--red);border-radius:8px;padding:2px 10px;font-size:12.5px;flex-shrink:0;}
+  .ms-head .name{font-weight:700;font-size:14.5px;}
+  .ms-head .time{color:var(--ink-2);font-size:12.5px;}
+  .ms-head .ms-bar{margin-left:auto;width:130px;height:8px;background:#EFE4D3;border-radius:999px;overflow:hidden;flex-shrink:0;}
+  .ms-head .ms-bar i{display:block;height:100%;width:0;background:var(--green);transition:width .3s;}
+  .ms-head .pct{font-size:12px;color:var(--ink-2);width:38px;text-align:right;flex-shrink:0;}
+  .ms-body{padding:6px 16px 14px;display:none;}
+  .ms.open .ms-body{display:block;}
+  .ms.open .ms-head{background:var(--yellow-soft);}
+  .task{display:flex;align-items:flex-start;gap:10px;padding:7px 4px;border-bottom:1px dashed var(--line);font-size:13.5px;}
+  .task:last-child{border-bottom:none;}
+  .task input[type=checkbox]{width:17px;height:17px;margin-top:3px;accent-color:var(--green);cursor:pointer;flex-shrink:0;}
+  .task.done .t-name{text-decoration:line-through;color:var(--ink-2);}
+  .t-name{font-weight:600;}
+  .t-dep{font-size:11.5px;color:var(--purple);}
+  .t-tag{font-size:11px;border-radius:5px;padding:0 6px;margin-left:6px;font-weight:700;}
+  .t-tag.A{background:#FDE8E6;color:var(--red);} .t-tag.B{background:#EEF4FB;color:var(--blue);}
+  .t-tag.C{background:#E8F5EE;color:var(--green);} .t-tag.S{background:#EEE9E0;color:var(--ink-2);}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink-2);margin:10px 0;}
+  .legend b{font-weight:700;}
+  .flow{background:#FFFDF8;border:1px dashed var(--line);border-radius:12px;padding:16px 20px;margin:12px 0;font-size:12.5px;line-height:2;overflow-x:auto;white-space:pre;font-family:Consolas,"Microsoft YaHei",monospace;color:var(--ink-2);}
+  .flow b{color:var(--red-dark);} .flow em{color:var(--blue);font-style:normal;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .mini{background:#FDFBF6;border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:12.5px;}
+  .mini b{color:var(--red-dark);}
+  .reset{border:1px solid var(--line);background:#fff;color:var(--ink-2);border-radius:8px;padding:6px 14px;font-size:12px;cursor:pointer;}
+  footer{max-width:1060px;margin:0 auto;padding:0 24px 50px;color:var(--ink-2);font-size:12px;}
+  @media(max-width:760px){.grid2{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-inner">
+    <div style="flex:1;min-width:260px;">
+      <span class="badge">「麦门知己」开发计划 · 配套架构设计 v1.0 / PRD v2.2</span>
+      <h1>开发进度追踪</h1>
+      <p>勾选任务即自动保存到浏览器（localStorage）· 进度条实时刷新 · 本页为纯静态文件，可随项目一起部署</p>
+    </div>
+    <div class="progress-hero">
+      <div class="row"><span>总进度</span><span id="totalPct">0%</span></div>
+      <div class="bar"><i id="totalBar"></i></div>
+      <div class="row" style="margin-top:8px;margin-bottom:0;"><span id="doneCount">已完成 0 / 0 项</span><button class="reset" onclick="resetAll()">重置全部</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- ============ 并行开发说明 ============ -->
+<section id="parallel">
+  <h2><span class="no">00</span>能否并行开发？—— 能，三条流水线 + 契约先行</h2>
+  <div class="callout blue"><b>并行前提：契约先行。</b>§5 API 设计与回复 JSON Schema 已在架构文档冻结，前端不需要等后端——先用 <code>mock.js</code> 里的假数据把全部界面做完，后端好了切真实接口，改动只有一处 fetch 层。</div>
+  <div class="flow"><b>流水线 A · 后端地基（红）</b>   M1 脚手架+登录 ──→ M3 MCP 网关 ──────→ M6 直下单
+<b>流水线 B · 智能层（蓝）</b>   M2 知识+记忆 ──→ M4 编排+LLM（gateway 用接口 mock，A 完成即切换）
+<b>流水线 C · 前端（绿）</b>   demo 组件化 ──→ mock 全界面 ──────→ M5 真实接线（等 M4 SSE 契约）
+
+<b>串行汇合点（不可并行的三处）：</b>
+  ① M4 编排 ← 需要 M2 的记忆快照 + M3 的 gateway（A、B 都完成）
+  ② M5 接线 ← 需要 M4 的 SSE 事件格式定稿
+  ③ M6 下单 ← 需要 M3 gateway + M4 菜单快照</div>
+  <div class="grid2">
+    <div class="mini"><b>只有你一个人 + 我开发？</b>「并行」体现为模块解耦推进：知识表、前端 mock 界面、schema 设计互不阻塞，可同批次交付；真正的串行只有集成测试阶段。</div>
+    <div class="mini"><b>有队友？</b>按流水线分工：A 给熟悉 Node/部署的人，B 给写 prompt/规则的人，C 给切页面的人。每条流水线内部任务无相互依赖，可放心并行。</div>
+  </div>
+  <div class="legend">
+    <span><b>泳道标记：</b></span>
+    <span class="t-tag A">A 后端地基</span>
+    <span class="t-tag B">B 智能层</span>
+    <span class="t-tag C">C 前端</span>
+    <span class="t-tag S">S 串行集成</span>
+  </div>
+</section>
+
+<!-- ============ 里程碑清单 ============ -->
+<section id="milestones">
+  <h2><span class="no">01</span>里程碑与任务清单（点击标题展开/收起）</h2>
+
+  <!-- M1 -->
+  <div class="ms open" id="m1">
+    <div class="ms-head" onclick="toggleMs('m1')">
+      <span class="id">M1</span><span class="name">工程骨架 + Token 登录全链路</span>
+      <span class="time">12:30–13:30</span>
+      <div class="ms-bar"><i></i></div><span class="pct">0%</span>
+    </div>
+    <div class="ms-body">
+      <div class="task" data-id="m1-1"><input type="checkbox"><div><span class="t-name">monorepo 脚手架</span>：mcd-soulmate/{web,server,nginx}、tsconfig、package.json</div><span class="t-tag A">A</span></div>
+      <div class="task" data-id="m1-2"><input type="checkbox"><div><span class="t-name">SQLite schema + 迁移</span>：users / memories / mood_diary / orders / chats（WAL）</div><span class="t-tag A">A</span></div>
+      <div class="task" data-id="m1-3"><input type="checkbox"><div><span class="t-name">config.ts</span>：环境变量加载与校验、密钥生成说明</div><span class="t-tag A">A</span></div>
+      <div class="task" data-id="m1-4"><input type="checkbox"><div><span class="t-name">auth 全链路</span>：MCP now-time-info 验证 → sha256 派生 user_id → AES-GCM 落库 → JWT Cookie</div><span class="t-tag A">A</span></div>
+      <div class="task" data-id="m1-5"><input type="checkbox"><div><span class="t-name">API 契约冻结</span>：web/mock.js 按架构 §5 写好全部假数据（前端并行的起点）</div><span class="t-tag A">A</span></div>
+      <div class="task" data-id="m1-6"><input type="checkbox"><div><span class="t-name">验收</span>：粘贴真实麦当劳 token 登录成功，users 表有加密记录，401 被拒</div><span class="t-tag S">S</span></div>
+    </div>
+  </div>
+
+  <!-- M2 -->
+  <div class="ms" id="m2">
+    <div class="ms-head" onclick="toggleMs('m2')">
+      <span class="id">M2</span><span class="name">知识引擎 + 用户记忆</span>
+      <span class="time">13:30–14:30 · 依赖：无（纯函数，可与 M1 并行）</span>
+      <div class="ms-bar"><i></i></div><span class="pct">0%</span>
+    </div>
+    <div class="ms-body">
+      <div class="task" data-id="m2-1"><input type="checkbox"><div><span class="t-name">节气表</span>：24 节气日期区间 → 食物意境映射 + 推荐策略</div><span class="t-tag B">B</span></div>
+      <div class="task" data-id="m2-2"><input type="checkbox"><div><span class="t-name">星座库 + 情绪策略</span>：星座×食物性格、水逆规则、6 类情绪→口味策略、时段判定</div><span class="t-tag B">B</span></div>
+      <div class="task" data-id="m2-3"><input type="checkbox"><div><span class="t-name">memory.service</span>：读写、追加、摘要去重、mood_diary、乐观锁</div><span class="t-tag B">B</span></div>
+      <div class="task" data-id="m2-4"><input type="checkbox"><div><span class="t-name">profile 三连问 API</span>：PUT /api/profile，生日自动推星座</div><span class="t-tag B">B</span></div>
+      <div class="task" data-id="m2-5"><input type="checkbox"><div><span class="t-name">知识层单测</span>：节气边界日期（霜降前后一天）、水逆区间、情绪映射全覆盖</div><span class="t-tag B">B</span></div>
+    </div>
+  </div>
+
+  <!-- M3 -->
+  <div class="ms" id="m3">
+    <div class="ms-head" onclick="toggleMs('m3')">
+      <span class="id">M3</span><span class="name">MCP 网关</span>
+      <span class="time">14:30–15:30 · 依赖：M1</span>
+      <div class="ms-bar"><i></i></div><span class="pct">0%</span>
+    </div>
+    <div class="ms-body">
+      <div class="task" data-id="m3-1"><input type="checkbox"><div><span class="t-name">gateway 连接池</span>：StreamableHTTPClientTransport 按 user_id 管理、空闲断开、LRU 上限 50</div><span class="t-tag A">A</span></div>
+      <div class="task" data-id="m3-2"><input type="checkbox"><div><span class="t-name">callTool 统一封装</span>：token 解密注入、TOON 解码、写操作禁缓存</div><span class="t-tag A">A</span></div>
+      <div class="task" data-id="m3-3"><input type="checkbox"><div><span class="t-name">TTL 缓存 + 令牌桶</span>：菜单 10min / 门店 5min / 营养 24h；每用户 20 req/min</div><span class="t-tag A">A</span></div>
+      <div class="task" data-id="m3-4"><input type="checkbox"><div><span class="t-name">错误映射</span>：401→AuthError（销毁连接）、429→缓存降级、超时→离线兜底</div><span class="t-tag A">A</span></div>
+      <div class="task" data-id="m3-5"><input type="checkbox"><div><span class="t-name">验收</span>：query-meals 拉到真实菜单；重复调用命中缓存（日志可见）</div><span class="t-tag S">S</span></div>
+    </div>
+  </div>
+
+  <!-- M4 -->
+  <div class="ms" id="m4">
+    <div class="ms-head" onclick="toggleMs('m4')">
+      <span class="id">M4</span><span class="name">五层编排 + LLM 回复（SSE）</span>
+      <span class="time">15:30–17:00 · 依赖：M2 + M3（gateway 接口可先 mock）</span>
+      <div class="ms-bar"><i></i></div><span class="pct">0%</span>
+    </div>
+    <div class="ms-body">
+      <div class="task" data-id="m4-1"><input type="checkbox"><div><span class="t-name">intent.service</span>：规则引擎抽约束（人数/预算/忌口）+ 情绪分类 + 反问兜底</div><span class="t-tag B">B</span></div>
+      <div class="task" data-id="m4-2"><input type="checkbox"><div><span class="t-name">llm.client</span>：OpenAI 兼容封装、超时重试、JSON mode</div><span class="t-tag B">B</span></div>
+      <div class="task" data-id="m4-3"><input type="checkbox"><div><span class="t-name">System Prompt 五层装配</span> + 话术库（30+ 金句、阶段文案、安全人设切换）</div><span class="t-tag B">B</span></div>
+      <div class="task" data-id="m4-4"><input type="checkbox"><div><span class="t-name">orchestrator</span>：AsyncGenerator 流水线，SSE 推 stage/delta/final 事件</div><span class="t-tag S">S</span></div>
+      <div class="task" data-id="m4-5"><input type="checkbox"><div><span class="t-name">reply.renderer</span>：{hook, menu[], total, quote, actions} 结构化输出</div><span class="t-tag B">B</span></div>
+      <div class="task" data-id="m4-6"><input type="checkbox"><div><span class="t-name">记忆落盘钩子</span>：对话结束自动更新口味/情绪日记/习惯</div><span class="t-tag S">S</span></div>
+      <div class="task" data-id="m4-7"><input type="checkbox"><div><span class="t-name">验收</span>：curl 打 /api/chat，"我好烦啊"返回完整结构化回复（真实菜单+券后价）</div><span class="t-tag S">S</span></div>
+    </div>
+  </div>
+
+  <!-- M5 -->
+  <div class="ms" id="m5">
+    <div class="ms-head" onclick="toggleMs('m5')">
+      <span class="id">M5</span><span class="name">前端接线（demo → 真实）</span>
+      <span class="time">17:00–17:45 · mock 界面可提前做；接线依赖 M4</span>
+      <div class="ms-bar"><i></i></div><span class="pct">0%</span>
+    </div>
+    <div class="ms-body">
+      <div class="task" data-id="m5-1"><input type="checkbox"><div><span class="t-name">组件化改造</span>：demo 内联样式抽 style.css，消息卡片模板化（可提前，用 mock）</div><span class="t-tag C">C</span></div>
+      <div class="task" data-id="m5-2"><input type="checkbox"><div><span class="t-name">登录 + 三连问页</span>：真实 /auth/login、401 提示、Token 申请指引、引导表单</div><span class="t-tag C">C</span></div>
+      <div class="task" data-id="m5-3"><input type="checkbox"><div><span class="t-name">SSE 消费</span>：fetch-stream 读事件，阶段文案 + 打字机 + 最终卡片渲染</div><span class="t-tag C">C</span></div>
+      <div class="task" data-id="m5-4"><input type="checkbox"><div><span class="t-name">记忆面板</span>：GET /api/memory 真实数据 + 删除交互</div><span class="t-tag C">C</span></div>
+      <div class="task" data-id="m5-5"><input type="checkbox"><div><span class="t-name">访客模式 + 登录引导卡</span>：guest:true、每日 1 次、结尾 upsell 弹卡</div><span class="t-tag C">C</span></div>
+    </div>
+  </div>
+
+  <!-- M6 -->
+  <div class="ms" id="m6">
+    <div class="ms-head" onclick="toggleMs('m6')">
+      <span class="id">M6</span><span class="name">直下单链路</span>
+      <span class="time">17:45–18:15 · 依赖：M3 + M4</span>
+      <div class="ms-bar"><i></i></div><span class="pct">0%</span>
+    </div>
+    <div class="ms-body">
+      <div class="task" data-id="m6-1"><input type="checkbox"><div><span class="t-name">orders 路由</span>：confirm（chatId 归属 + 菜单快照 hash 校验）→ create-order</div><span class="t-tag S">S</span></div>
+      <div class="task" data-id="m6-2"><input type="checkbox"><div><span class="t-name">支付卡片 + 进度</span>：payUrl 展示、query-order 轮询、状态文案</div><span class="t-tag C">C</span></div>
+      <div class="task" data-id="m6-3"><input type="checkbox"><div><span class="t-name">验收</span>：真实建单拿到支付链接；支付后状态流转 done；记忆 habits 更新</div><span class="t-tag S">S</span></div>
+    </div>
+  </div>
+
+  <!-- M7 -->
+  <div class="ms" id="m7">
+    <div class="ms-head" onclick="toggleMs('m7')">
+      <span class="id">M7</span><span class="name">部署收尾 + 参赛提交</span>
+      <span class="time">18:15–19:00 · 依赖：全部</span>
+      <div class="ms-bar"><i></i></div><span class="pct">0%</span>
+    </div>
+    <div class="ms-body">
+      <div class="task" data-id="m7-1"><input type="checkbox"><div><span class="t-name">Nginx + pm2 + HTTPS</span>：/api 反代（关 buffering）、certbot、开机自启</div><span class="t-tag A">A</span></div>
+      <div class="task" data-id="m7-2"><input type="checkbox"><div><span class="t-name">备份 cron</span>：每日 sqlite3 .backup</div><span class="t-tag A">A</span></div>
+      <div class="task" data-id="m7-3"><input type="checkbox"><div><span class="t-name">README 脱敏 + .gitignore 检查</span>：grep 确认无 token / 密钥 / 记忆数据</div><span class="t-tag A">A</span></div>
+      <div class="task" data-id="m7-4"><input type="checkbox"><div><span class="t-name">demo 录屏备份</span>：三组场景完整录一遍，断网兜底</div><span class="t-tag S">S</span></div>
+      <div class="task" data-id="m7-5"><input type="checkbox"><div><span class="t-name">双渠道提交</span>：WaytoAGI 用餐赛道 + 麦当劳 M-CODE（GitHub 开源 + RANKING 报名，10/25 23:59 截止）</div><span class="t-tag S">S</span></div>
+      <div class="task" data-id="m7-6"><input type="checkbox"><div><span class="t-name">拉票启动</span>：Star 排名截至 10/26 00:00，提交后立刻社群传播</div><span class="t-tag S">S</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 并行执行建议 ============ -->
+<section id="howto">
+  <h2><span class="no">02</span>怎么用这份计划</h2>
+  <ul style="margin-left:20px;font-size:13.5px;">
+    <li><b>单人开发（现状）：</b>我按 A → B/C 交错推进：M1 脚手架完成后，M2（纯函数）与 M3（依赖 M1）可同批次交付，M5 的 mock 界面在等接口期间提前做；真正必须串行的只有 M4 集成、M6 下单、M7 收尾。</li>
+    <li><b>多人开发：</b>按泳道标记（A/B/C）认领，汇合点在 M4/M6；把本页放到服务器上，各自勾选实时可见进度。</li>
+    <li><b>阻塞处理：</b>某任务卡住就保持未勾选并在其行内备注原因——未完成任务即天然风险清单；M4/M6 未完成时 M7 的录屏兜底始终可用。</li>
+    <li><b>进度持久化：</b>勾选状态存浏览器 localStorage（key: <code>mcd-soulmate-plan-v1</code>），换设备/清缓存会重置——多人协作建议把本页部署到服务器各自勾选，或以本文件为模板复制多份。</li>
+  </ul>
+  <div class="callout"><b>关键截止时间提醒：</b>M-CODE 报名截止 <b>10/25 23:59</b> · Star 排名截止 <b>10/26 00:00</b> · WaytoAGI 作品提交 <b>10/25</b>。M7 的提交任务是最硬的 deadline，宁可砍 M6 也保提交。</div>
+</section>
+
+</div>
+
+<footer>「麦门知己」开发计划 v1.0 · 2026-10-24 · 上游：《麦门知己-架构设计.html》《麦门知己-PRD.html》</footer>
+
+<script>
+  const KEY='mcd-soulmate-plan-v1';
+  const saved=JSON.parse(localStorage.getItem(KEY)||'{}');
+
+  // 恢复勾选状态
+  document.querySelectorAll('.task').forEach(t=>{
+    const cb=t.querySelector('input');
+    if(saved[t.dataset.id]){cb.checked=true;t.classList.add('done');}
+    cb.addEventListener('change',()=>{
+      t.classList.toggle('done',cb.checked);
+      saved[t.dataset.id]=cb.checked;
+      localStorage.setItem(KEY,JSON.stringify(saved));
+      refresh();
+    });
+  });
+
+  function toggleMs(id){document.getElementById(id).classList.toggle('open');}
+
+  function refresh(){
+    let total=0,done=0;
+    document.querySelectorAll('.ms').forEach(ms=>{
+      const tasks=[...ms.querySelectorAll('.task')];
+      const d=tasks.filter(t=>t.querySelector('input').checked).length;
+      total+=tasks.length;done+=d;
+      const pct=tasks.length?Math.round(d/tasks.length*100):0;
+      ms.querySelector('.ms-bar i').style.width=pct+'%';
+      ms.querySelector('.pct').textContent=pct+'%';
+    });
+    document.getElementById('totalBar').style.width=(total?Math.round(done/total*100):0)+'%';
+    document.getElementById('totalPct').textContent=(total?Math.round(done/total*100):0)+'%';
+    document.getElementById('doneCount').textContent=`已完成 ${done} / ${total} 项`;
+  }
+  function resetAll(){
+    if(!confirm('确定清空全部勾选记录？'))return;
+    localStorage.removeItem(KEY);
+    document.querySelectorAll('.task').forEach(t=>{t.querySelector('input').checked=false;t.classList.remove('done');});
+    refresh();
+  }
+  refresh();
+</script>
+</body>
+</html>

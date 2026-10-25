@@ -1,0 +1,92 @@
+/**
+ * 12 星座数据表
+ * 日期边界按通行占星日期，覆盖全年无缝。
+ */
+import type { StarSign } from '../types/contract.js';
+
+export const STAR_SIGNS: StarSign[] = [
+  {
+    name: '摩羯座',
+    startMonth: 12, startDay: 22, endMonth: 1, endDay: 19,
+    personality: '稳，务实，连吃汉堡都要算性价比',
+    strategy: ['经典款', '高性价比', '不冒险'],
+    birthdayTactic: '生日月给自己点一份从来没点过的大份，就这一次不算浪费',
+  },
+  {
+    name: '水瓶座',
+    startMonth: 1, startDay: 20, endMonth: 2, endDay: 18,
+    personality: '什么都要试新的，吃也一样',
+    strategy: ['新品', '反常识搭配', '尝鲜'],
+    birthdayTactic: '生日月适合把两个不搭的东西搭在一起吃，好奇心就是你的礼物',
+  },
+  {
+    name: '双鱼座',
+    startMonth: 2, startDay: 19, endMonth: 3, endDay: 20,
+    personality: '心软，容易共情，吃甜的会开心',
+    strategy: ['甜', '温热', '安抚系'],
+    birthdayTactic: '生日月甜品不限量，你值得被温柔对待',
+  },
+  {
+    name: '白羊座',
+    startMonth: 3, startDay: 21, endMonth: 4, endDay: 19,
+    personality: '直，快，要辣就辣到底',
+    strategy: ['辣', '大份', '刺激'],
+    birthdayTactic: '生日月挑战一次最辣的，赢了就是寿星',
+  },
+  {
+    name: '金牛座',
+    startMonth: 4, startDay: 20, endMonth: 5, endDay: 20,
+    personality: '嘴刁，认准一样就一直吃',
+    strategy: ['熟悉口味', '高满足感', '扎实'],
+    birthdayTactic: '生日月把本命单品点双份，金牛的快乐很简单',
+  },
+  {
+    name: '双子座',
+    startMonth: 5, startDay: 21, endMonth: 6, endDay: 21,
+    personality: '什么都想尝一口，选择困难是常态',
+    strategy: ['多样', '小份组合', '尝鲜'],
+    birthdayTactic: '生日月多点几样小份的，你本来就不想只吃一种',
+  },
+  {
+    name: '巨蟹座',
+    startMonth: 6, startDay: 22, endMonth: 7, endDay: 22,
+    personality: '恋旧，熟悉的味道最有安全感',
+    strategy: ['熟悉口味', '温热', '安抚系'],
+    birthdayTactic: '生日月吃你第一次来点的那份，我们都有记忆',
+  },
+  {
+    name: '狮子座',
+    startMonth: 7, startDay: 23, endMonth: 8, endDay: 22,
+    personality: '要排面，吃饭也要有仪式感',
+    strategy: ['仪式感', '大份', '分享'],
+    birthdayTactic: '生日月点最贵的那份，你值得被看见',
+  },
+  {
+    name: '处女座',
+    startMonth: 8, startDay: 23, endMonth: 9, endDay: 22,
+    personality: '细节控，忌口清单比菜单长',
+    strategy: ['精确特制', '清爽', '可控'],
+    birthdayTactic: '生日月允许自己有一次不做计算，就一次',
+  },
+  {
+    name: '天秤座',
+    startMonth: 9, startDay: 23, endMonth: 10, endDay: 23,
+    personality: '选择困难重症，什么都要平衡',
+    strategy: ['均衡', '套餐', '不用选'],
+    birthdayTactic: '生日月我替你选，你只管吃',
+  },
+  {
+    name: '天蝎座',
+    startMonth: 10, startDay: 24, endMonth: 11, endDay: 22,
+    personality: '爱恨分明，要么清汤要么爆辣',
+    strategy: ['重口', '辣', '极致'],
+    birthdayTactic: '生日月圆筒当长寿冰淇淋，简单但够狠',
+  },
+  {
+    name: '射手座',
+    startMonth: 11, startDay: 23, endMonth: 12, endDay: 21,
+    personality: '随性，走到哪吃到哪',
+    strategy: ['尝鲜', '大份', '不挑'],
+    birthdayTactic: '生日月闭眼点，反正你什么都能吃',
+  },
+];

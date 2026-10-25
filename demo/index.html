@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>麦门知己 · 样式预览（未接功能）</title>
+<style>
+  :root{
+    --red:#DA291C; --red-dark:#B02015; --yellow:#FFC72C; --yellow-soft:#FFF7E0;
+    --ink:#2B2118; --ink-2:#7A6B5B; --line:#EFE4D3; --bg:#FBF7F0; --card:#fff;
+    --green:#1E7B4F;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;background:var(--bg);color:var(--ink);height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+  button{font-family:inherit;cursor:pointer;}
+  .hidden{display:none!important;}
+
+  /* ============ 登录视图 ============ */
+  #viewLogin{flex:1;display:flex;align-items:center;justify-content:center;background:linear-gradient(150deg,var(--red) 0%,var(--red-dark) 70%);padding:20px;overflow:auto;}
+  .login-card{background:var(--card);border-radius:20px;padding:40px 38px;width:400px;max-width:94vw;box-shadow:0 24px 60px rgba(0,0,0,.28);}
+  .login-logo{width:64px;height:64px;border-radius:50%;background:var(--yellow);display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:900;color:var(--red);margin:0 auto 14px;border:3px solid var(--red);}
+  .login-card h1{font-size:22px;text-align:center;}
+  .login-card .slogan{text-align:center;color:var(--ink-2);font-size:13.5px;margin:6px 0 24px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:13px;color:var(--ink-2);margin-bottom:6px;}
+  .field input{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:11px 14px;font-size:15px;outline:none;transition:border .2s;}
+  .field input:focus{border-color:var(--red);}
+  .btn-main{width:100%;background:var(--red);color:#fff;border:none;border-radius:12px;padding:13px 0;font-size:16px;font-weight:700;margin-top:6px;transition:background .2s;}
+  .btn-main:hover{background:var(--red-dark);}
+  .btn-guest{width:100%;background:transparent;border:none;color:var(--ink-2);font-size:13px;padding:14px 0 0;}
+  .btn-guest u{text-underline-offset:3px;}
+  .apply-hint{text-align:center;font-size:12px;color:var(--ink-2);margin-top:12px;}
+  .apply-hint u{text-underline-offset:3px;}
+  .login-foot{text-align:center;font-size:12px;color:var(--ink-2);margin-top:18px;line-height:1.6;}
+
+  /* ============ 主应用视图 ============ */
+  header{background:var(--card);border-bottom:1px solid var(--line);padding:12px 20px;display:flex;align-items:center;gap:14px;flex-shrink:0;}
+  .logo{width:40px;height:40px;border-radius:50%;background:var(--yellow);display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:900;color:var(--red);border:2.5px solid var(--red);flex-shrink:0;}
+  .brand h2{font-size:17px;}
+  .brand p{font-size:12px;color:var(--ink-2);}
+  .scenarios{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .chip{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:6px 14px;font-size:12.5px;color:var(--ink-2);transition:.2s;}
+  .chip.on{background:var(--yellow-soft);border-color:var(--yellow);color:var(--ink);font-weight:700;}
+  .user-chip{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-2);}
+  .avatar{width:30px;height:30px;border-radius:50%;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;}
+  .btn-out{border:none;background:transparent;color:var(--ink-2);font-size:12px;text-decoration:underline;text-underline-offset:3px;}
+
+  .app{flex:1;display:flex;gap:18px;padding:18px 20px;min-height:0;max-width:1200px;width:100%;margin:0 auto;}
+  .chat-col{flex:1;display:flex;flex-direction:column;min-width:0;}
+  .chat{flex:1;overflow-y:auto;padding:6px 4px 12px;scroll-behavior:smooth;}
+
+  .bubble{max-width:78%;margin-bottom:14px;animation:pop .3s ease both;}
+  @keyframes pop{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+  .bubble.user{margin-left:auto;background:var(--yellow);border-radius:16px 16px 4px 16px;padding:11px 16px;font-size:14.5px;font-weight:600;box-shadow:0 2px 6px rgba(0,0,0,.05);}
+  .bubble.ai{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--red);border-radius:16px 16px 16px 4px;padding:16px 18px;box-shadow:0 2px 8px rgba(0,0,0,.04);}
+  .ai-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12.5px;color:var(--ink-2);}
+  .ai-head .dot{width:8px;height:8px;border-radius:50%;background:var(--red);}
+  .ai p{font-size:14px;margin:7px 0;}
+  .ai .hook{color:var(--red-dark);font-weight:600;}
+  .divider{font-size:12px;color:var(--ink-2);letter-spacing:2px;margin:14px 0 8px;display:flex;align-items:center;gap:10px;}
+  .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line);}
+
+  .menu{background:#FFFDF8;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:10px 0;}
+  .menu-item{display:flex;align-items:baseline;gap:8px;padding:7px 0;border-bottom:1px dashed var(--line);font-size:13.5px;}
+  .menu-item:last-child{border-bottom:none;}
+  .menu-item .name{font-weight:700;}
+  .menu-item .spec{color:var(--ink-2);font-size:12.5px;}
+  .menu-item .why{color:var(--green);font-size:12px;}
+  .menu-item .price{margin-left:auto;font-weight:800;color:var(--red-dark);white-space:nowrap;}
+  .total{display:flex;justify-content:space-between;font-size:13.5px;margin-top:10px;padding:10px 12px;background:var(--yellow-soft);border-radius:8px;}
+  .total b{color:var(--red-dark);}
+  .strike{text-decoration:line-through;color:var(--ink-2);font-weight:400;font-size:12.5px;}
+
+  .quote{border-left:3px solid var(--yellow);background:var(--yellow-soft);border-radius:0 10px 10px 0;padding:10px 14px;font-size:13.5px;color:var(--ink);font-style:italic;margin-top:10px;}
+  .actions{display:flex;gap:10px;margin-top:12px;}
+  .btn-act{border-radius:10px;padding:9px 18px;font-size:13.5px;font-weight:700;}
+  .btn-primary{background:var(--red);color:#fff;border:none;}
+  .btn-ghost{background:#fff;border:1.5px solid var(--line);color:var(--ink-2);}
+
+  .typing{display:flex;gap:5px;padding:14px 18px;background:var(--card);border:1px solid var(--line);border-radius:16px 16px 16px 4px;width:fit-content;}
+  .typing i{width:7px;height:7px;border-radius:50%;background:var(--ink-2);animation:blink 1.2s infinite;}
+  .typing i:nth-child(2){animation-delay:.2s;} .typing i:nth-child(3){animation-delay:.4s;}
+  @keyframes blink{0%,80%,100%{opacity:.25;}40%{opacity:1;}}
+
+  .input-bar{flex-shrink:0;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 12px;display:flex;gap:10px;align-items:center;box-shadow:0 -2px 12px rgba(0,0,0,.03);}
+  .input-bar input{flex:1;border:none;outline:none;font-size:14.5px;background:transparent;}
+  .btn-send{background:var(--red);color:#fff;border:none;border-radius:10px;padding:9px 20px;font-weight:700;font-size:14px;}
+  .preview-note{text-align:center;font-size:11.5px;color:var(--ink-2);padding-top:6px;}
+
+  /* 记忆面板 */
+  aside.memory{width:300px;flex-shrink:0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;overflow-y:auto;}
+  aside.memory h3{font-size:14.5px;display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+  aside.memory h3::before{content:"🧠";font-size:15px;}
+  aside.memory .hint{font-size:11.5px;color:var(--ink-2);margin-bottom:14px;}
+  .mem-card{background:#FDFBF6;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12.5px;}
+  .mem-card b{display:block;font-size:12px;color:var(--red-dark);margin-bottom:4px;}
+  .mem-card span{color:var(--ink-2);line-height:1.6;display:block;}
+  .mem-card .tagline{display:inline-block;background:var(--yellow-soft);border-radius:6px;padding:1px 7px;margin:2px 3px 0 0;font-size:11.5px;color:var(--ink);}
+
+  @media (max-width:900px){
+    aside.memory{display:none;}
+    .scenarios{display:none;}
+    .bubble{max-width:92%;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ==================== 登录视图（样式演示） ==================== -->
+<div id="viewLogin">
+  <div class="login-card">
+    <div class="login-logo">M</div>
+    <h1>麦门知己</h1>
+    <p class="slogan">不止点餐，是懂你 · 一个 Token，让它认识你</p>
+    <div class="field">
+      <label>麦当劳 MCP Token</label>
+      <input type="password" placeholder="粘贴你的 Token（open.mcd.cn 获取）">
+    </div>
+    <button class="btn-main" onclick="doLogin()">连接麦当劳，开始</button>
+    <p class="apply-hint">没有 Token？<u>三步申请：open.mcd.cn 扫码登录 → 控制台激活 → 复制</u></p>
+    <button class="btn-guest">先逛逛，<u>以访客身份体验一次对话</u></button>
+    <p class="login-foot">Token 即身份：登录后我可以直接帮你下单，最后一步由你扫码付款<br>Token 加密存储 · 日志脱敏 · 请勿分享给他人</p>
+  </div>
+</div>
+
+<!-- ==================== 主应用视图（登录后样式） ==================== -->
+<div id="viewApp" class="hidden" style="flex:1;display:flex;flex-direction:column;min-height:0;">
+  <header>
+    <div class="logo">M</div>
+    <div class="brand">
+      <h2>麦门知己</h2>
+      <p>不止点餐，是懂你</p>
+    </div>
+    <div class="scenarios">
+      <button class="chip on" data-s="1" onclick="showScene(1,this)">场景① 我好烦啊</button>
+      <button class="chip" data-s="2" onclick="showScene(2,this)">场景② 4人150块</button>
+      <button class="chip" data-s="3" onclick="showScene(3,this)">场景③ 老用户回归</button>
+    </div>
+    <div class="user-chip">
+      <div class="avatar">麦</div>
+      <span>麦小门</span>
+      <button class="btn-out" onclick="doLogout()">退出</button>
+    </div>
+  </header>
+
+  <div class="app">
+    <div class="chat-col">
+      <div class="chat" id="chat"></div>
+      <div>
+        <div class="input-bar">
+          <input type="text" placeholder="随便说点什么… 情绪、指令，它都接得住" disabled>
+          <button class="btn-send" disabled>发送</button>
+        </div>
+        <p class="preview-note">样式预览 · 未接入 MCP 功能 · 对话内容为预设演示数据</p>
+      </div>
+    </div>
+
+    <aside class="memory">
+      <h3>它的记忆</h3>
+      <p class="hint">跨会话保存 · 你可以随时在「记忆管理页」查看或删除</p>
+      <div class="mem-card"><b>👤 静态档案</b><span>昵称：麦小门 · 天蝎座（10/24 生日快到了）<br>忌口：香菜</span></div>
+      <div class="mem-card"><b>🍭 口味画像</b>
+        <span><i class="tagline">爱甜</i><i class="tagline">可乐去冰</i><i class="tagline">微辣可以</i><i class="tagline">本命：麦麦鸡</i></span>
+      </div>
+      <div class="mem-card"><b>📅 习惯数据</b><span>常点时段：下午茶、夜市<br>预算区间：¥25–45 · 常去：留仙洞店</span></div>
+      <div class="mem-card"><b>💗 情绪日记</b><span>10/23（周四）烦躁 → 推荐麦麦鸡套餐，反馈"治愈"</span></div>
+      <div class="mem-card"><b>🌙 仪式记忆</b><span>水逆第 3 天（10/22 起）<br>霜降（10/23）提醒过"贴秋膘"</span></div>
+    </aside>
+  </div>
+</div>
+
+<script>
+  /* ===== 登录（纯样式演示） ===== */
+  function doLogin(){
+    document.getElementById('viewLogin').classList.add('hidden');
+    document.getElementById('viewApp').classList.remove('hidden');
+    showScene(1, document.querySelector('.chip[data-s="1"]'));
+  }
+  function doLogout(){
+    document.getElementById('viewApp').classList.add('hidden');
+    document.getElementById('viewLogin').classList.remove('hidden');
+  }
+
+  /* ===== 场景预设数据（仅样式演示） ===== */
+  const scenes = {
+    1: [
+      {role:'user', text:'我好烦啊'},
+      {role:'ai', html:`
+        <p>收到。<span class="hook">水逆第 3 天</span>（我记得，你 22 号就开始跟我抱怨代码了），霜降刚过一天，天一冷人就容易烦——这是宇宙的锅，不是你的。</p>
+        <p>对了，<span class="hook">明天就是你生日</span>，天蝎座寿星本周宜甜食续命。我给你安排了：</p>
+        <div class="divider">你的「水逆急救单」· 留仙洞店</div>
+        <div class="menu">
+          <div class="menu-item"><span class="name">新地（巧克力）</span><span class="spec">×1</span><span class="why">甜度抵消 30% 烦躁</span><span class="price">¥11.5</span></div>
+          <div class="menu-item"><span class="name">麦辣鸡翅</span><span class="spec">×2</span><span class="why">烦就要吃辣，物理发泄</span><span class="price">¥16.0</span></div>
+          <div class="menu-item"><span class="name">冰鲜柠檬水</span><span class="spec">去冰 · 你上次说的</span><span class="why">霜降了还是给你留了点冰的自由</span><span class="price">¥9.5</span></div>
+          <div class="menu-item"><span class="name">热可可</span><span class="spec">×1</span><span class="why">霜降限定情绪，热乎的才对</span><span class="price">¥13.0</span></div>
+        </div>
+        <div class="total"><span>券后实付 <b>¥39.5</b> <span class="strike">原价 ¥50.0</span></span><span>热量 ≈ 720 kcal</span></div>
+        <div class="quote">"宇宙没善待你，但优惠券有。上周四你烦的时候吃了麦麦鸡说治愈——这次加个热可可，霜降嘛，麦门。"</div>
+        <div class="actions">
+          <button class="btn-act btn-primary">确认下单</button>
+          <button class="btn-act btn-ghost">换一换</button>
+        </div>`}
+    ],
+    2: [
+      {role:'user', text:'明天中午 4 个人，预算 150，有人不吃辣'},
+      {role:'ai', html:`
+        <p>明白，明午 4 人餐，¥150 以内，1 份免辣已标好。<span class="hook">霜降刚过，按老规矩给你们贴秋膘</span>——</p>
+        <div class="divider">「霜降贴膘四人餐」· 预约明午 12:00</div>
+        <div class="menu">
+          <div class="menu-item"><span class="name">巨无霸套餐</span><span class="spec">×2 · 中薯中可</span><span class="price">¥77.0</span></div>
+          <div class="menu-item"><span class="name">板烧鸡腿堡套餐</span><span class="spec">×1 · 不辣版</span><span class="why">给不吃辣的同学</span><span class="price">¥40.5</span></div>
+          <div class="menu-item"><span class="name">麦麦鸡</span><span class="spec">×1 · 微辣</span><span class="why">你的本命，顺手带上</span><span class="price">¥13.0</span></div>
+          <div class="menu-item"><span class="name">玉米杯</span><span class="spec">×4</span><span class="price">¥15.0</span></div>
+        </div>
+        <div class="total"><span>合计 <b>¥145.5</b> · 预算内 ✓ <span class="strike">¥150.0</span></span><span>剩余 ¥4.5</span></div>
+        <div class="quote">"剩的 ¥4.5 够加一个圆筒——贴膘要贴全套，生日月你也算半个寿星，麦门。"</div>
+        <div class="actions">
+          <button class="btn-act btn-primary">确认下单</button>
+          <button class="btn-act btn-ghost">调整菜单</button>
+        </div>`}
+    ],
+    3: [
+      {role:'user', text:'我又来了'},
+      {role:'ai', html:`
+        <p><span class="hook">哟，麦小门。</span>三天不见，我可都记着呢——上周四你烦躁，麦麦鸡治好了你；你的可乐永远去冰；还有，<span class="hook">明天你生日</span>。</p>
+        <div class="divider">「寿星专属」· 天蝎座本命单</div>
+        <div class="menu">
+          <div class="menu-item"><span class="name">圆筒冰淇淋</span><span class="spec">×1</span><span class="why">长寿冰淇淋，提前一天开吃</span><span class="price">¥5.0</span></div>
+          <div class="menu-item"><span class="name">麦麦鸡</span><span class="spec">×2 · 你的本命</span><span class="why">10/23 与 10/24 都验证过</span><span class="price">¥26.0</span></div>
+          <div class="menu-item"><span class="name">可乐</span><span class="spec">去冰 · 老规矩</span><span class="price">¥9.5</span></div>
+        </div>
+        <div class="total"><span>券后实付 <b>¥33.0</b> <span class="strike">原价 ¥40.5</span></span><span>积分将 +33</span></div>
+        <div class="quote">"用得越久我越懂你——这话别的助手说不出，因为它们没记性。生日快乐，麦门。"</div>
+        <div class="actions">
+          <button class="btn-act btn-primary">确认下单</button>
+          <button class="btn-act btn-ghost">换一换</button>
+        </div>`}
+    ]
+  };
+
+  function showScene(n, chip){
+    document.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+    if(chip) chip.classList.add('on');
+    const chat = document.getElementById('chat');
+    chat.innerHTML = '';
+    const msgs = scenes[n];
+    msgs.forEach((m, i)=>{
+      setTimeout(()=>{
+        if(m.role==='user'){
+          const d = document.createElement('div');
+          d.className = 'bubble user'; d.textContent = m.text;
+          chat.appendChild(d);
+        }else{
+          const d = document.createElement('div');
+          d.className = 'bubble ai';
+          d.innerHTML = `<div class="ai-head"><span class="dot"></span>麦门知己 · 为你懂</div><div class="ai">${m.html}</div>`;
+          chat.appendChild(d);
+        }
+        chat.scrollTop = chat.scrollHeight;
+      }, i*450);
+    });
+  }
+</script>
+</body>
+</html>

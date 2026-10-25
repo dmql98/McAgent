@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>麦门知己 · 架构设计文档</title>
+<style>
+  :root{
+    --red:#DA291C; --red-dark:#B02015; --yellow:#FFC72C; --yellow-soft:#FFF7E0;
+    --ink:#2B2118; --ink-2:#6B5D4F; --line:#EFE4D3; --bg:#FBF7F0; --card:#FFFFFF;
+    --green:#1E7B4F; --blue:#1F5FA8; --purple:#6B4FA1;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;background:var(--bg);color:var(--ink);line-height:1.75;}
+  .hero{background:linear-gradient(135deg,var(--red) 0%,var(--red-dark) 100%);color:#fff;padding:48px 24px 40px;}
+  .hero-inner{max-width:1080px;margin:0 auto;}
+  .hero .badge{display:inline-block;background:var(--yellow);color:var(--ink);font-weight:700;font-size:13px;padding:3px 12px;border-radius:999px;margin-bottom:14px;}
+  .hero h1{font-size:32px;letter-spacing:1px;}
+  .hero p.sub{margin-top:10px;font-size:15.5px;opacity:.92;max-width:680px;}
+  .hero .meta{margin-top:18px;font-size:13px;opacity:.85;display:flex;gap:22px;flex-wrap:wrap;}
+  .wrap{max-width:1080px;margin:0 auto;padding:36px 24px 80px;display:flex;gap:36px;align-items:flex-start;}
+  nav.toc{width:210px;flex-shrink:0;position:sticky;top:24px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 0;}
+  nav.toc a{display:block;padding:7px 20px;color:var(--ink-2);font-size:13px;text-decoration:none;border-left:3px solid transparent;}
+  nav.toc a:hover{color:var(--red);border-left-color:var(--yellow);background:var(--yellow-soft);}
+  main{flex:1;min-width:0;}
+  section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:30px 32px;margin-bottom:26px;}
+  h2{font-size:21px;display:flex;align-items:center;gap:10px;margin-bottom:18px;padding-bottom:12px;border-bottom:2px solid var(--yellow);}
+  h2 .no{font-size:12px;font-weight:700;color:#fff;background:var(--red);border-radius:6px;padding:2px 8px;letter-spacing:.5px;flex-shrink:0;}
+  h3{font-size:16px;margin:22px 0 10px;color:var(--red-dark);}
+  p{margin:8px 0;}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:4px 0;}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px;}
+  th{background:var(--yellow-soft);text-align:left;padding:8px 12px;border:1px solid var(--line);white-space:nowrap;}
+  td{padding:8px 12px;border:1px solid var(--line);vertical-align:top;}
+  tr:nth-child(even) td{background:#FDFBF6;}
+  code{background:var(--yellow-soft);padding:1px 6px;border-radius:4px;font-size:12.5px;font-family:Consolas,Menlo,monospace;color:var(--red-dark);}
+  .flow{background:#FFFDF8;border:1px dashed var(--line);border-radius:12px;padding:18px 22px;margin:14px 0;font-size:13px;line-height:2;overflow-x:auto;white-space:pre;font-family:Consolas,"Microsoft YaHei",monospace;color:var(--ink-2);}
+  .flow b{color:var(--red-dark);}
+  .flow em{color:var(--blue);font-style:normal;}
+  .callout{border-left:4px solid var(--yellow);background:var(--yellow-soft);border-radius:0 10px 10px 0;padding:13px 18px;margin:14px 0;font-size:13.5px;}
+  .callout.red{border-left-color:var(--red);background:#FDF0EE;}
+  .callout.blue{border-left-color:var(--blue);background:#EEF4FB;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+  .mini{background:#FDFBF6;border:1px solid var(--line);border-radius:10px;padding:13px 15px;font-size:13px;}
+  .mini h4{font-size:13.5px;color:var(--red-dark);margin-bottom:5px;}
+  .tag{display:inline-block;font-size:11.5px;font-weight:700;border-radius:6px;padding:1px 8px;margin-right:6px;}
+  .tag.core{background:#FDE8E6;color:var(--red);}
+  .tag.opt{background:#E8F5EE;color:var(--green);}
+  .tag.later{background:#EEE9E0;color:var(--ink-2);}
+  /* 架构图 */
+  .arch{display:flex;flex-direction:column;gap:10px;margin:16px 0;}
+  .arch-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+  .arch-box{background:#FDFBF6;border:1.5px solid var(--line);border-radius:10px;padding:10px 14px;font-size:12.5px;text-align:center;flex:1;min-width:130px;}
+  .arch-box b{display:block;font-size:13px;}
+  .arch-box span{color:var(--ink-2);font-size:11.5px;}
+  .arch-box.hl{border-color:var(--red);background:#FDF0EE;}
+  .arch-box.zone{border-color:var(--blue);background:#EEF4FB;}
+  .arch-arrow{text-align:center;color:var(--red-dark);font-size:15px;line-height:1;}
+  .zone-label{font-size:11px;font-weight:700;color:var(--blue);letter-spacing:1px;text-align:center;margin-top:2px;}
+  .ext-label{font-size:11px;font-weight:700;color:var(--green);letter-spacing:1px;text-align:center;}
+  footer{max-width:1080px;margin:0 auto;padding:0 24px 60px;color:var(--ink-2);font-size:12.5px;}
+  @media (max-width:860px){ .wrap{flex-direction:column;} nav.toc{position:static;width:100%;} .grid2,.grid3{grid-template-columns:1fr;} }
+  @media print{ nav.toc{display:none;} section{border:none;page-break-inside:avoid;} }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-inner">
+    <span class="badge">「麦门知己」前后端实现蓝图 · 配套 PRD v2.2 / demo/index.html</span>
+    <h1>架构设计文档</h1>
+    <p class="sub">按 demo 已确认的样式与交互实现完整前后端：静态前端 + Node.js 单体后端 + SQLite + 官方 MCP SDK，面向个人服务器自部署优化——单进程、零外部 SaaS 依赖、一把 docker-compose / pm2 可拉起。</p>
+    <div class="meta">
+      <span>版本 v1.0</span><span>日期 2026-10-24</span><span>状态 开发基线</span><span>决策人 已确认：仅麦当劳 Token 登录 · 支持直下单</span>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+<nav class="toc">
+  <a href="#a1">1. 架构总览</a>
+  <a href="#a2">2. 技术选型</a>
+  <a href="#a3">3. 工程结构</a>
+  <a href="#a4">4. 后端模块设计</a>
+  <a href="#a5">5. API 设计</a>
+  <a href="#a6">6. 数据模型</a>
+  <a href="#a7">7. 核心时序</a>
+  <a href="#a8">8. MCP 网关</a>
+  <a href="#a9">9. LLM 编排</a>
+  <a href="#a10">10. 安全设计</a>
+  <a href="#a11">11. 配置与环境变量</a>
+  <a href="#a12">12. 部署方案</a>
+  <a href="#a13">13. 开发里程碑</a>
+</nav>
+
+<main>
+
+<!-- ============ 1 ============ -->
+<section id="a1">
+  <h2><span class="no">01</span>架构总览</h2>
+  <div class="arch">
+    <div class="arch-row"><div class="arch-box" style="max-width:320px;"><b>用户浏览器</b><span>桌面 / 手机，单页应用</span></div></div>
+    <div class="arch-arrow">↓ HTTPS（Nginx 反代 + TLS 证书）</div>
+    <div class="arch-row">
+      <div class="arch-box zone"><b>web/ 静态前端</b><span>demo 演进 · 原生 JS · SSE 接收</span></div>
+      <div class="arch-box zone"><b>server/ API 服务</b><span>Node.js 22 · Express · TS · 单进程</span></div>
+    </div>
+    <div class="zone-label">▲ 你的服务器（同一台机器）</div>
+    <div class="arch-arrow">↓ 服务内部分层</div>
+    <div class="arch-row">
+      <div class="arch-box hl"><b>auth</b><span>Token 登录 · JWT</span></div>
+      <div class="arch-box hl"><b>memory</b><span>用户记忆 CRUD</span></div>
+      <div class="arch-box hl"><b>knowledge</b><span>节气/星座/情绪规则</span></div>
+      <div class="arch-box hl"><b>orchestrator</b><span>五层流水线编排</span></div>
+      <div class="arch-box hl"><b>mcp-gateway</b><span>SDK 客户端池</span></div>
+    </div>
+    <div class="arch-row">
+      <div class="arch-box zone"><b>SQLite</b><span>users / memory / orders / mood_diary</span></div>
+      <div class="arch-box zone"><b>LLM Provider</b><span>OpenAI 兼容接口（可配）</span></div>
+      <div class="arch-box zone"><b>菜单缓存</b><span>内存 TTL Cache</span></div>
+    </div>
+    <div class="arch-arrow">↓ HTTPS · Authorization: Bearer（每用户自己的 token）</div>
+    <div class="ext-label">▼ 外部服务</div>
+    <div class="arch-row"><div class="arch-box" style="max-width:340px;border-color:var(--green);"><b>麦当劳 MCP · https://mcp.mcd.cn</b><span>Streamable HTTP · 30+ 工具 · 600 req/min</span></div></div>
+  </div>
+  <div class="callout"><b>三个关键决策：</b>
+  ① <b>单体不拆微服务</b>——单人项目 + 一台服务器，单进程最好运维；瓶颈在麦当劳侧限流，不在本机性能。
+  ② <b>LLM 只做"说"，规则做"想"</b>——意图解析、节气映射、策略选择全部静态规则表保证稳定，LLM 负责最终回复的人设化生成，失败可降级为模板话术。
+  ③ <b>MCP Token 服务器持有</b>——前端永不接触 token，全部经 mcp-gateway 代理调用。</div>
+</section>
+
+<!-- ============ 2 ============ -->
+<section id="a2">
+  <h2><span class="no">02</span>技术选型</h2>
+  <table>
+    <tr><th>层</th><th>选型</th><th>理由</th><th>备选</th></tr>
+    <tr><td>前端</td><td>原生 HTML/CSS/JS（demo 演进）</td><td>demo 已定稿；无构建链，静态目录直接部署；SSE 用原生 EventSource/fetch-stream</td><td>Vue/React（改造成本 > 收益）</td></tr>
+    <tr><td>后端框架</td><td>Node.js 22 + Express 5 + TypeScript</td><td>官方 MCP TS SDK 生态最成熟；单语言全栈；pm2 守护简单</td><td>FastAPI + Python mcp SDK</td></tr>
+    <tr><td>MCP 客户端</td><td><code>@modelcontextprotocol/sdk</code> StreamableHTTPClientTransport</td><td>官方实现，天然支持 streamablehttp 与 per-session header 注入</td><td>手写 HTTP client（降级方案）</td></tr>
+    <tr><td>数据库</td><td>SQLite（better-sqlite3，WAL 模式）</td><td>零运维单文件库；个人服务器量级绰绰有余；备份=复制文件</td><td>PostgreSQL（用户量起来后迁）</td></tr>
+    <tr><td>LLM</td><td>OpenAI 兼容接口，模型经环境变量配置</td><td>不锁定厂商：DeepSeek / Qwen / GLM / Kimi 均可一行 env 切换；仅需 chat.completions 一个能力</td><td>—</td></tr>
+    <tr><td>认证</td><td>JWT（httpOnly Cookie）+ AES-256-GCM</td><td>无状态会话；token 加密落库</td><td>—</td></tr>
+    <tr><td>反代/TLS</td><td>Nginx + Let's Encrypt（certbot）</td><td>静态托管 + API 反代 + HTTPS 一步到位</td><td>Caddy（更省事，二选一）</td></tr>
+    <tr><td>进程守护</td><td>pm2（或 systemd）</td><td>开机自启 + 崩溃重启 + 日志</td><td>docker compose</td></tr>
+  </table>
+</section>
+
+<!-- ============ 3 ============ -->
+<section id="a3">
+  <h2><span class="no">03</span>工程结构</h2>
+<div class="flow">mcd-soulmate/
+├── <b>web/</b>                      # 静态前端（Nginx 直接托管）
+│   ├── index.html              # demo 演进：登录 + 聊天 + 记忆面板
+│   ├── app.js                  # 状态管理、SSE 消费、API 调用
+│   ├── style.css               # 从 demo 内联样式抽出
+│   └── assets/
+├── <b>server/</b>                   # Node.js 后端
+│   ├── src/
+│   │   ├── index.ts            # 入口：express 装配、路由挂载
+│   │   ├── config.ts           # 环境变量加载与校验
+│   │   ├── db/
+│   │   │   ├── schema.sql      # 建表 DDL（见 §6）
+│   │   │   └── index.ts        # better-sqlite3 连接与迁移
+│   │   ├── routes/
+│   │   │   ├── auth.ts         # POST /api/auth/login · logout
+│   │   │   ├── profile.ts      # GET/PUT /api/profile（三连问落库）
+│   │   │   ├── chat.ts         # POST /api/chat（SSE 流式回复）
+│   │   │   ├── memory.ts       # GET/DELETE /api/memory
+│   │   │   └── orders.ts       # POST /api/orders/confirm · GET 进度
+│   │   ├── services/
+│   │   │   ├── auth.service.ts       # token 验证、user_id 派生、AES 加密
+│   │   │   ├── memory.service.ts     # 记忆读写、摘要去重、情绪日记
+│   │   │   ├── knowledge.service.ts  # 节气表、星座库、情绪策略、时段
+│   │   │   ├── intent.service.ts     # 多维意图解析（规则 + LLM 兜底）
+│   │   │   ├── orchestrator.ts       # ★ 五层流水线编排（SSE 事件流）
+│   │   │   ├── llm.client.ts         # OpenAI 兼容 chat 封装 + 重试
+│   │   │   └── reply.renderer.ts     # 前端消息 JSON 结构生成
+│   │   ├── mcp/
+│   │   │   ├── gateway.ts      # ★ 客户端池：按 user_id 管理 MCP 连接
+│   │   │   ├── cache.ts        # 菜单/门店 TTL 缓存（限流保护）
+│   │   │   └── errors.ts       # 401/429 → 业务错误映射
+│   │   └── middleware/
+│   │       ├── jwt.ts          # 会话校验
+│   │       └── ratelimit.ts    # 简单内存限流（防滥用自部署接口）
+│   ├── package.json
+│   ├── .env.example
+│   └── ecosystem.config.js     # pm2 配置
+├── nginx/mcd-soulmate.conf     # 站点配置模板
+└── README.md                   # 部署文档（无任何真实凭证）</div>
+</section>
+
+<!-- ============ 4 ============ -->
+<section id="a4">
+  <h2><span class="no">04</span>后端模块设计</h2>
+  <div class="grid3">
+    <div class="mini"><h4>auth.service</h4>登录：前端 POST token → 调 MCP <code>now-time-info</code> 验证（401 拒绝）→ <code>user_id = sha256(token).slice(0,16)</code> → AES-256-GCM 加密 token 落库 → 签发 JWT(7d)。</div>
+    <div class="mini"><h4>memory.service</h4>按 user_id 读写记忆 JSON（表内 TEXT 列）；提供 <code>appendFact / updateTaste / addMood / snapshot()</code>；每次写入后跑摘要去重（同 key 覆盖，mood_diary 追加）。</div>
+    <div class="mini"><h4>knowledge.service</h4>纯函数模块：节气表（日期区间→意境+推荐策略）、星座库（星座+月份→策略）、情绪→口味策略、时段判定。零 IO，可单测。</div>
+    <div class="mini"><h4>intent.service</h4>规则引擎：正则/关键词抽取显式约束（人数/预算/忌口/时段）与情绪分类；置信度不足时降级 LLM 结构化解析（JSON mode），再不足则反问一次。</div>
+    <div class="mini"><h4>orchestrator ★</h4>AsyncGenerator：加载记忆 → 意图解析 → 知识匹配 → MCP 校准（逐事件推 SSE）→ LLM 生成回复 → 记忆落盘。每个阶段向 SSE 推 <code>stage / delta / final</code> 事件。</div>
+    <div class="mini"><h4>mcp/gateway ★</h4><code>Map&lt;user_id, Client&gt;</code> 连接池；调用时注入该用户解密后的 Bearer token；菜单类只读调用走 TTL 缓存；401 销毁连接并标记会话失效，429 走缓存降级。</div>
+    <div class="mini"><h4>llm.client</h4>OpenAI 兼容封装：chat(messages, {json?})，超时 20s、重试 1 次；system prompt 分层装配（人设 + 用户记忆快照 + 知识上下文 + 本轮策略）。</div>
+    <div class="mini"><h4>reply.renderer</h4>产出前端渲染 JSON：<code>{hook, menu[], total, quote, actions}</code>——前端按 demo 卡片样式渲染，不直接吃 markdown。</div>
+    <div class="mini"><h4>middleware</h4>jwt 校验除 /auth 外全挂；内存限流：IP 30 req/min、chat 10 req/min（自部署防爬防滥用）。</div>
+  </div>
+</section>
+
+<!-- ============ 5 ============ -->
+<section id="a5">
+  <h2><span class="no">05</span>API 设计</h2>
+  <table>
+    <tr><th>方法</th><th>路径</th><th>说明</th><th>请求 → 响应要点</th></tr>
+    <tr><td>POST</td><td><code>/api/auth/login</code></td><td>Token 登录（唯一登录方式）</td><td><code>{token}</code> → 服务端 MCP 验证 → <code>{ok, isNew, userId}</code> + httpOnly JWT Cookie；401 → <code>{error:"TOKEN_INVALID"}</code></td></tr>
+    <tr><td>POST</td><td><code>/api/auth/logout</code></td><td>退出（清 Cookie；不解绑）</td><td>→ <code>{ok}</code></td></tr>
+    <tr><td>DELETE</td><td><code>/api/auth/unbind</code></td><td>解绑：删加密 token 与全部记忆</td><td>→ <code>{ok}</code>（前端二次确认）</td></tr>
+    <tr><td>GET</td><td><code>/api/me</code></td><td>当前用户 + 引导状态</td><td>→ <code>{userId, profile?, hasToken, needOnboarding}</code></td></tr>
+    <tr><td>PUT</td><td><code>/api/profile</code></td><td>三连问/资料修改</td><td><code>{nickname?, birthday?, taboo?[]}</code> → 自动推星座入库</td></tr>
+    <tr><td>POST</td><td><code>/api/chat</code></td><td>对话（SSE 流式）</td><td><code>{message, guest?}</code> → SSE：<code>event: stage</code>（解析/查知识/看菜单/领券）· <code>event: reply</code>（渲染 JSON）· <code>event: done</code></td></tr>
+    <tr><td>POST</td><td><code>/api/orders/confirm</code></td><td>确认下单（直下单）</td><td><code>{chatId, autoPay:false}</code> → 服务端以用户账号 <code>create-order</code> → <code>{orderId, payUrl, store}</code>；建单后自动 <code>query-order</code> 轮询</td></tr>
+    <tr><td>GET</td><td><code>/api/orders/:id</code></td><td>订单进度</td><td>→ <code>{status, progressText}</code></td></tr>
+    <tr><td>GET</td><td><code>/api/memory</code></td><td>记忆管理页数据</td><td>→ 分组卡片 JSON（profile/taste/habits/mood/rituals）</td></tr>
+    <tr><td>DELETE</td><td><code>/api/memory/:key</code></td><td>删除记忆条目</td><td>→ <code>{ok}</code></td></tr>
+    <tr><td>GET</td><td><code>/api/health</code></td><td>健康检查</td><td>→ <code>{ok, mcp:"reachable"}</code></td></tr>
+  </table>
+  <div class="callout blue"><b>访客模式实现：</b><code>POST /api/chat</code> 带 <code>guest:true</code> 时走同一 orchestrator，但记忆读写指向内存临时对象，且每个 IP 每日限 1 次完整对话；回复末尾附 <code>upsell:"login"</code> 标记，前端据此弹出登录引导卡片。</div>
+</section>
+
+<!-- ============ 6 ============ -->
+<section id="a6">
+  <h2><span class="no">06</span>数据模型（SQLite）</h2>
+<div class="flow">-- 用户与凭证（token 永不明文）
+CREATE TABLE users (
+  user_id     TEXT PRIMARY KEY,          -- sha256(token)[0:16]
+  token_enc   TEXT NOT NULL,             -- AES-256-GCM(原始token)
+  nickname    TEXT,
+  birthday    TEXT,                      -- ISO 日期；星座由此推算
+  star_sign   TEXT,
+  taboo       TEXT,                      -- JSON 数组：忌口/过敏
+  created_at  INTEGER, updated_at INTEGER
+);
+
+-- 用户记忆（五模块合一大 JSON + 独立情绪日记表）
+CREATE TABLE memories (
+  user_id  TEXT PRIMARY KEY REFERENCES users(user_id),
+  data     TEXT NOT NULL,               -- JSON: {taste, habits, rituals}
+  version  INTEGER DEFAULT 1,           -- 乐观锁
+  updated_at INTEGER
+);
+CREATE TABLE mood_diary (              -- 情绪日记（护城河，独立成表便于回溯）
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT, mood TEXT,             -- 烦躁/疲惫/低落/开心/平淡/庆祝
+  trigger_text TEXT,                   -- 用户原话（脱敏截断 200 字）
+  recommended TEXT,                    -- 推荐了什么(JSON)
+  feedback TEXT,                       -- "治愈"等用户反馈
+  created_at INTEGER
+);
+
+-- 订单留痕（对账与"记忆回钩"素材）
+CREATE TABLE orders (
+  id TEXT PRIMARY KEY,                 -- mcp 返回的 orderId
+  user_id TEXT, chat_id TEXT,
+  menu_json TEXT, total REAL,
+  status TEXT,                         -- created/paid/progress/done/canceled
+  pay_url TEXT, created_at INTEGER
+);
+
+-- 对话留痕（可选，轮询清理 30 天前）
+CREATE TABLE chats (
+  id TEXT PRIMARY KEY, user_id TEXT,
+  messages TEXT, created_at INTEGER    -- JSON 数组
+);</div>
+  <div class="callout"><b>备份策略：</b><code>sqlite3 data.db ".backup backup.db"</code> 进 crontab 每日一次；整库即 <code>data/</code> 目录一个文件，迁移服务器直接搬走。</div>
+</section>
+
+<!-- ============ 7 ============ -->
+<section id="a7">
+  <h2><span class="no">07</span>核心时序</h2>
+  <h3>7.1 登录时序（Token 即身份）</h3>
+<div class="flow">浏览器                     server/auth                麦当劳 MCP              SQLite
+   │  POST {token}             │                          │                    │
+   │──────────────────────────→│  now-time-info(token)    │                    │
+   │                           │─────────────────────────→│  ✓ 200             │
+   │                           │  user_id = sha256[0:16]  │                    │
+   │                           │  AES-GCM 加密 token ──────────────────────────→ │ upsert users
+   │  Set-Cookie: JWT(httpOnly)│                          │                    │
+   │←──────────────────────────│  ← {ok, isNew, needOnboarding}                │
+   │  isNew → 前端进三连问引导页  │                          │                    │</div>
+  <h3>7.2 对话时序（SSE 五层流水线）</h3>
+<div class="flow">浏览器        orchestrator            knowledge       mcp-gateway → 麦当劳        llm
+   │ POST {message}     │                  │                │                      │
+   │───────────→ 加载记忆(memory)          │                │                      │
+   │  SSE: stage=解析    │→ intent.service  │                │                      │
+   │  SSE: stage=懂你    │→ knowledge.service（节气/星座/时段/情绪策略）              │
+   │  SSE: stage=看菜单  │→ gateway.query-meals / meal-detail（缓存命中则跳过）       │
+   │  SSE: stage=领券    │→ gateway.available-coupons → calculate-price             │
+   │  SSE: stage=组织回复│→ llm.chat(人设+记忆快照+策略+菜单事实) ──────────────────→ │
+   │  SSE: reply{hook,menu[],total,quote}│  ← 结构化渲染 JSON                      │
+   │  SSE: done          │→ memory 落盘 + mood_diary 追加                           │</div>
+  <h3>7.3 直下单时序（确认制 + 人付款）</h3>
+<div class="flow">浏览器           orchestrator/orders      mcp-gateway → 麦当劳            SQLite
+   │ POST /orders/confirm{chatId}  │                │                      │
+   │──────────────────→ 校验 chat 归属 + 菜单快照一致   │                      │
+   │                              │ create-order(token)                   │
+   │                              │──────────────────→ {orderId, payUrl}  │
+   │ ← {orderId, payUrl}          │                                        │
+   │   前端展示付款卡片（二维码/链接） │                                       │
+   │   轮询 GET /orders/:id        │ query-order ────→ status              │
+   │   付款后：status=progress → 前端"正在为你出餐…"                          │
+   │                              │ status=done → orders 落库 + 记忆 habits 更新│</div>
+</section>
+
+<!-- ============ 8 ============ -->
+<section id="a8">
+  <h2><span class="no">08</span>MCP 网关设计</h2>
+  <table>
+    <tr><th>关注点</th><th>设计</th></tr>
+    <tr><td>连接池</td><td><code>Map&lt;user_id, {client, transport, lastUsed}</code>>；空闲 10 分钟断开重连；上限 50 连接，LRU 淘汰</td></tr>
+    <tr><td>Token 注入</td><td>StreamableHTTPClientTransport <code>requestInit.headers</code> 注入 <code>Authorization: Bearer（解密后）</code>；明文仅在内存存在</td></tr>
+    <tr><td>限流保护（600/min）</td><td>① 菜单/门店/营养类只读调用统一走 TTL 缓存（菜单 10min、门店 5min、营养 24h，key=storeId+时段）；② 网关级令牌桶：每 user 20 req/min，先于麦当劳 429 拦下</td></tr>
+    <tr><td>错误映射</td><td>401 → <code>AuthError</code>（销毁连接、会话标记失效、前端弹重新登录）；429 → <code>RateLimitError</code>（缓存降级回复"菜单先看旧的"）；5xx/超时 → <code>McpDown</code>（离线推荐兜底）</td></tr>
+    <tr><td>调用规范</td><td>统一封装 <code>callTool(userId, name, args, {cacheTtl})</code>：写操作（create/cancel/bind）永不走缓存；TOON 紧凑格式响应统一在此解码</td></tr>
+    <tr><td>调试模式</td><td><code>DEBUG_MCP=1</code> 时打印工具名/参数/耗时（自动脱敏 token），方便开发期排查</td></tr>
+  </table>
+</section>
+
+<!-- ============ 9 ============ -->
+<section id="a9">
+  <h2><span class="no">09</span>LLM 编排设计</h2>
+  <h3>9.1 两级解析，规则优先</h3>
+  <div class="grid2">
+    <div class="mini"><h4>第一级：规则引擎（默认）</h4>意图解析与策略选择走静态规则：正则抽约束、关键词表分情绪、日期查节气、生日查星座。<b>零 LLM 成本、结果确定、可单测</b>，演示不翻车。</div>
+    <div class="mini"><h4>第二级：LLM 兜底（JSON mode）</h4>规则置信度低（如"今天想吃点有故事感的"）→ LLM 结构化输出 <code>{mood, constraints, strategy_hint}</code>；两次失败 → 礼貌反问一次。</div>
+  </div>
+  <h3>9.2 System Prompt 分层装配</h3>
+<div class="flow">[L1 人设]   麦门知己：懂你老友，语气温度规范、玩梗边界（极端低落→温和模式）
+[L2 记忆]   用户记忆快照（昵称/星座/忌口/口味/近 3 条情绪日记/水逆状态）——"引用要具体"
+[L3 知识]   本轮命中的节气 + 星座运势 + 时段 + 情绪策略（含推荐理由，要求回复点明出处）
+[L4 事实]   MCP 返回的真实菜单/价格/优惠券/热量（<b>硬约束：只能从这里选品与报价，禁止编造</b>）
+[L5 输出]   固定 JSON Schema：{hook, menu:[{name,spec,why,price}], total, original, quote, actions}</div>
+  <div class="callout"><b>为什么回复必须是结构化 JSON：</b>前端按 demo 的菜单卡片/合计条/金句框组件化渲染，AI 不产 markdown——样式永远不翻车，价格永远来自真实数据。</div>
+  <h3>9.3 话术库</h3>
+  <ul>
+    <li><code>quotes.md</code>：30+ 条收尾金句按情绪分类，LLM 生成时随机注入 1 条做底稿再润色，保证"每次不一样但不尬"；</li>
+    <li><code>stage-texts</code>：SSE 阶段文案（"正在替你看菜单…""翻了翻你的优惠券…"），前端打字机效果素材；</li>
+    <li><code>safety</code>：极端低落关键词表命中 → 切换温和人设 + 禁玩梗 + 附一句真诚关怀。</li>
+  </ul>
+</section>
+
+<!-- ============ 10 ============ -->
+<section id="a10">
+  <h2><span class="no">10</span>安全设计</h2>
+  <table>
+    <tr><th>层面</th><th>措施</th></tr>
+    <tr><td>凭证</td><td>Token AES-256-GCM（密钥=env <code>TOKEN_ENC_KEY</code>，独立于 JWT 密钥）；内存中明文最短化；日志/错误堆栈统一走脱敏器</td></tr>
+    <tr><td>会话</td><td>JWT httpOnly + SameSite=Lax；7 天滑动续期；401 全局拦截</td></tr>
+    <tr><td>传输</td><td>全站 HTTPS（Let's Encrypt）；HSTS 开启</td></tr>
+    <tr><td>注入防护</td><td>用户输入只作为 data 进 prompt（system/role 固定），不做模板拼接；SQLite 全参数化；CSP 基线（前端无内联脚本执行第三方内容）</td></tr>
+    <tr><td>越权防护</td><td>一切读写在 middleware 强制 <code>req.userId</code> 归属校验；订单 confirm 校验 chatId 属于当前用户且菜单快照 hash 一致</td></tr>
+    <tr><td>资金安全</td><td>Agent 无任何支付能力（平台未提供，也不模拟）；payUrl 仅透传展示；一键下单开关默认关闭</td></tr>
+    <tr><td>滥用防护</td><td>IP/用户双维内存限流；访客每日 1 次；健康检查不暴露版本信息</td></tr>
+  </table>
+</section>
+
+<!-- ============ 11 ============ -->
+<section id="a11">
+  <h2><span class="no">11</span>配置与环境变量</h2>
+<div class="flow"># server/.env
+PORT=3000                       # API 端口（Nginx 反代 /api）
+JWT_SECRET=your-random-secret   # 会话签名
+TOKEN_ENC_KEY=your-32byte-key   # 用户麦当劳 token 加密密钥
+LLM_BASE_URL=https://api.deepseek.com/v1   # OpenAI 兼容端点，可换
+LLM_API_KEY=sk-xxx
+LLM_MODEL=deepseek-chat
+MCP_ENDPOINT=https://mcp.mcd.cn
+GUEST_DAILY_LIMIT=1
+DATA_DIR=./data                 # SQLite 与备份所在目录
+DEBUG_MCP=0</div>
+  <div class="callout red"><b>.env 永不进 Git：</b>仓库只含 <code>.env.example</code>；部署文档第一步就是生成随机密钥（<code>openssl rand -hex 32</code>）。</div>
+</section>
+
+<!-- ============ 12 ============ -->
+<section id="a12">
+  <h2><span class="no">12</span>部署方案（你的服务器）</h2>
+  <div class="flow">① 基础：Node 22 + Nginx + certbot（HTTPS）
+② 后端：git pull → npm ci → npm run build → pm2 start ecosystem.config.js
+③ 前端：web/ 目录 → Nginx root；/api → proxy_pass http://127.0.0.1:3000
+④ 数据：首次启动自动执行 schema.sql 建库（data/mcd.db）
+⑤ 证书：certbot --nginx 自动续期
+⑥ 备份：crontab 每日 sqlite3 .backup → data/backup/</div>
+  <div class="callout"><b>Nginx 关键配置点：</b><code>/api</code> 反代时关闭缓冲（<code>proxy_buffering off</code>）以支持 SSE 流式；<code>proxy_read_timeout 120s</code> 兜住 LLM 慢响应。</div>
+</section>
+
+<!-- ============ 13 ============ -->
+<section id="a13">
+  <h2><span class="no">13</span>开发里程碑（按今天剩余时间）</h2>
+  <table>
+    <tr><th>阶段</th><th>交付物</th><th>验收</th></tr>
+    <tr><td>M1 骨架 <span class="tag core">12:30–13:30</span></td><td>monorepo 脚手架、schema、config、auth 全链路（真 token 登录）</td><td>粘贴你的麦当劳 token 能登录并写入 users 表</td></tr>
+    <tr><td>M2 知识与记忆 <span class="tag core">13:30–14:30</span></td><td>knowledge.service 三张表 + memory.service + profile 三连问 API</td><td>生日→星座自动入库；记忆快照可读</td></tr>
+    <tr><td>M3 MCP 网关 <span class="tag core">14:30–15:30</span></td><td>gateway 连接池 + 缓存 + 错误映射</td><td>query-meals 拉到真实菜单；重复调用命中缓存</td></tr>
+    <tr><td>M4 编排与回复 <span class="tag core">15:30–17:00</span></td><td>orchestrator SSE + llm.client + reply.renderer + intent</td><td>"我好烦啊"端到端输出 demo 样式的真实菜单回复</td></tr>
+    <tr><td>M5 前端接线 <span class="tag core">17:00–17:45</span></td><td>demo 改造：真实登录/引导/SSE 消费/下单卡片/记忆面板</td><td>浏览器全流程可用</td></tr>
+    <tr><td>M6 直下单 <span class="tag core">17:45–18:15</span></td><td>orders 路由 + confirm + 进度轮询</td><td>真实建单拿到 payUrl（支付人完成）</td></tr>
+    <tr><td>M7 部署与收尾 <span class="tag opt">18:15–19:00</span></td><td>Nginx 配置 + pm2 + 备份 cron + README（脱敏）</td><td>HTTPS 域名下全流程可用；demo 录屏备份完成</td></tr>
+  </table>
+  <p><b>砍单顺序（时间不够时）：</b>记忆管理页 API → 订单进度轮询（手动刷新兜底）→ LLM 兜底解析（纯规则）→ 访客模式。核心链路 <b>登录→对话→菜单→下单</b> 永不砍。</p>
+</section>
+
+</main>
+</div>
+
+<footer>「麦门知己」架构设计 v1.0 · 2026-10-24 · 上游文档：《麦门知己-PRD.html》v2.2 · 样式基线 demo/index.html · 本文为纯静态页面可直接部署</footer>
+
+</body>
+</html>

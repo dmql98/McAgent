@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>麦门知己 · 点餐引擎运行逻辑（树状拆解版）</title>
+<style>
+  :root{
+    --red:#DA291C; --red-dark:#B02015; --yellow:#FFC72C; --yellow-soft:#FFF7E0;
+    --ink:#2B2118; --ink-2:#6B5D4F; --ink-3:#9A8B7A; --line:#EFE4D3; --bg:#FBF7F0; --card:#FFFFFF;
+    --green:#1E7B4F; --green-soft:#E8F5EE; --blue:#1F5FA8; --blue-soft:#EEF4FB; --purple:#6B4FA1; --purple-soft:#F3EFFB;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;background:var(--bg);color:var(--ink);line-height:1.75;}
+
+  .hero{background:linear-gradient(135deg,var(--red) 0%,var(--red-dark) 100%);color:#fff;padding:46px 24px 38px;}
+  .hero-inner{max-width:1120px;margin:0 auto;}
+  .hero .badge{display:inline-block;background:var(--yellow);color:var(--ink);font-weight:700;font-size:12.5px;padding:3px 12px;border-radius:999px;margin-bottom:14px;}
+  .hero h1{font-size:31px;letter-spacing:.5px;}
+  .hero p.sub{margin-top:10px;font-size:15px;opacity:.93;max-width:820px;}
+  .hero .meta{margin-top:16px;font-size:12.5px;opacity:.85;display:flex;gap:20px;flex-wrap:wrap;}
+
+  .wrap{max-width:1120px;margin:0 auto;padding:34px 24px 80px;display:flex;gap:34px;align-items:flex-start;}
+  nav.toc{width:210px;flex-shrink:0;position:sticky;top:20px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 0;max-height:calc(100vh - 40px);overflow:auto;}
+  nav.toc a{display:block;padding:6px 16px;color:var(--ink-2);font-size:12.5px;text-decoration:none;border-left:3px solid transparent;}
+  nav.toc a:hover{color:var(--red);border-left-color:var(--yellow);background:var(--yellow-soft);}
+  nav.toc .grp{font-size:11px;font-weight:800;color:var(--ink-3);letter-spacing:1px;padding:12px 16px 4px;}
+  main{flex:1;min-width:0;}
+
+  section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:28px 30px;margin-bottom:24px;}
+  h2{font-size:20.5px;display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:11px;border-bottom:2px solid var(--yellow);}
+  h2 .no{font-size:11.5px;font-weight:700;color:#fff;background:var(--red);border-radius:6px;padding:2px 8px;letter-spacing:.5px;flex-shrink:0;font-family:Consolas,monospace;}
+  h3{font-size:15.5px;margin:22px 0 9px;color:var(--red-dark);}
+  h4{font-size:13.5px;margin:16px 0 6px;color:var(--ink);}
+  p{margin:8px 0;font-size:14px;}
+  ul,ol{margin:8px 0 8px 22px;font-size:14px;}
+  li{margin:4px 0;}
+  table{width:100%;border-collapse:collapse;margin:13px 0;font-size:12.8px;}
+  th{background:var(--yellow-soft);text-align:left;padding:8px 11px;border:1px solid var(--line);white-space:nowrap;font-size:12.5px;}
+  td{padding:8px 11px;border:1px solid var(--line);vertical-align:top;}
+  tr:nth-child(even) td{background:#FDFBF6;}
+  code{background:var(--yellow-soft);padding:1px 5px;border-radius:4px;font-size:12.2px;font-family:Consolas,Menlo,monospace;color:var(--red-dark);}
+  pre{background:#2B2118;color:#F2E9DC;padding:14px 16px;border-radius:10px;overflow-x:auto;font-size:12.2px;line-height:1.7;margin:12px 0;font-family:Consolas,Menlo,monospace;}
+  pre .c{color:#9A8B7A;} pre .k{color:#FFC72C;} pre .s{color:#8FD3A8;}
+
+  .callout{border-left:4px solid var(--yellow);background:var(--yellow-soft);border-radius:0 10px 10px 0;padding:12px 16px;margin:13px 0;font-size:13.2px;}
+  .callout.red{border-left-color:var(--red);background:#FDF0EE;}
+  .callout.blue{border-left-color:var(--blue);background:var(--blue-soft);}
+  .callout.green{border-left-color:var(--green);background:var(--green-soft);}
+  .callout.purple{border-left-color:var(--purple);background:var(--purple-soft);}
+  .callout b{color:var(--red-dark);}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+  @media(max-width:860px){.grid2,.grid3{grid-template-columns:1fr;}}
+  .mini{background:#FDFBF6;border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:12.8px;}
+  .mini h4{font-size:13px;color:var(--red-dark);margin:0 0 5px;}
+  .mini p{margin:3px 0;font-size:12.6px;}
+
+  .tag{display:inline-block;font-size:11px;font-weight:700;border-radius:5px;padding:1px 7px;margin-right:5px;vertical-align:1px;}
+  .tag.real{background:#E8F5EE;color:var(--green);}
+  .tag.rule{background:var(--yellow-soft);color:#8A6A00;}
+  .tag.llm{background:var(--purple-soft);color:var(--purple);}
+  .tag.local{background:var(--blue-soft);color:var(--blue);}
+
+  /* ---------- 树状图 ---------- */
+  .tree-box{background:linear-gradient(180deg,#FDFBF6 0%,#FBF7F0 100%);border:1px solid var(--line);border-radius:12px;padding:10px 4px 4px;margin:16px 0;overflow-x:auto;}
+  .tree-svg{display:block;width:100%;height:auto;font-family:"PingFang SC","Microsoft YaHei",sans-serif;}
+  .tree-svg text{dominant-baseline:middle;text-anchor:middle;}
+
+  .tn rect{fill:#fff;stroke:#D9C7AC;stroke-width:1.7;rx:12;transition:.15s;}
+  .tn text.t{font-size:13.5px;font-weight:700;fill:var(--ink);}
+  .tn text.s{font-size:11px;fill:var(--ink-3);}
+  .tn.llm rect{stroke:#8E6FC4;stroke-width:1.9;fill:#FBFAFE;}
+  .tn.rule rect{stroke:#D4A017;stroke-width:1.9;fill:#FFFDF5;}
+  .tn.data rect{stroke:#3E7BB5;stroke-width:1.9;fill:#F7FAFD;}
+  .tn.db rect{stroke:#1E7B4F;stroke-width:1.9;fill:#F6FBF8;}
+  .tn.hot rect{stroke:var(--red);stroke-width:2.2;fill:#FDF3F1;}
+  .tn.dim rect{stroke:#CFC0A8;stroke-dasharray:5 4;fill:#FCFAF5;}
+  .tg-x rect{stroke:#B9A88F;stroke-width:1.6;fill:#F4EEE3;rx:9;}
+  .tg-x text{font-size:11.5px;font-weight:700;fill:var(--ink-2);}
+
+  .ct{fill:none;stroke:#C4B49C;stroke-width:1.7;stroke-linecap:round;}
+  .ct-main{fill:none;stroke:#B9A88F;stroke-width:2.2;stroke-linecap:round;}
+  .ct-hot{fill:none;stroke:var(--red);stroke-width:2;stroke-dasharray:6 5;stroke-linecap:round;}
+  .lbl{font-size:11px;font-weight:700;fill:var(--ink-3);letter-spacing:.3px;}
+  .lbl.red{fill:var(--red);}
+  .lbl.grn{fill:var(--green);}
+  .lbl.pur{fill:var(--purple);}
+
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--ink-2);padding:8px 12px 2px;}
+  .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px;border:2px solid;}
+
+  /* 分支卡片树 */
+  .branch{display:grid;gap:14px;margin:16px 0;}
+  .branch.two{grid-template-columns:1fr 1fr;}
+  .branch.three{grid-template-columns:repeat(3,1fr);}
+  @media(max-width:860px){.branch.two,.branch.three{grid-template-columns:1fr;}}
+  .bcard{border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:#FDFBF6;position:relative;}
+  .bcard::before{content:'';position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:3px;background:var(--yellow);}
+  .bcard.llm::before{background:var(--purple);}
+  .bcard.rule::before{background:var(--yellow);}
+  .bcard.data::before{background:var(--blue);}
+  .bcard.db::before{background:var(--green);}
+  .bcard>h4{margin:0 0 6px;padding-left:10px;font-size:13.5px;color:var(--red-dark);}
+  .bcard>p,.bcard>ul{margin-left:10px;}
+  .bcard p{font-size:12.8px;color:var(--ink-2);margin:4px 0;}
+
+  .kv{font-size:12.6px;margin:5px 0;}
+  .kv b{color:var(--ink);}
+  .code-inline{font-family:Consolas,monospace;font-size:11.8px;color:var(--red-dark);}
+  .shot{background:#FFFDF5;border:1px dashed #DCCBAB;border-radius:10px;padding:11px 14px;font-size:12.6px;margin:10px 0;color:var(--ink-2);}
+  .shot b{color:var(--red-dark);}
+  .foot{max-width:1120px;margin:0 auto;padding:0 24px 60px;font-size:12.3px;color:var(--ink-3);}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-inner">
+    <span class="badge">重构版 · 树状拆解</span>
+    <h1>麦门知己 · 点餐引擎运行逻辑</h1>
+    <p class="sub">
+      一句话进来，先判它够不够清楚 —— 不清楚就绕一条旁路，用「你的记忆 + 现在几点」替你补全，
+      再汇入主循环：查真实菜单 → 规则选品 → 模型判断 → 算价 → 写文案 → 落盘。
+      全流程 6 个分叉点，每个分叉的判定权归属都是明确的。
+    </p>
+    <div class="meta">
+      <span>代码实证：orchestrator / llm-intent / selector / menu-review</span>
+      <span>测试 297 条全绿</span>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+<nav class="toc">
+  <div class="grp">总览</div>
+  <a href="#principle">00 · 一条铁律</a>
+  <a href="#tree">01 · 全局树状图</a>
+  <div class="grp">四个分叉</div>
+  <a href="#fork1">02 · 分叉一：清不清晰</a>
+  <a href="#fork2">03 · 分叉二：旁路</a>
+  <a href="#fork3">04 · 分叉三：出单判断</a>
+  <a href="#fork4">05 · 分叉四：购物车</a>
+  <div class="grp">主循环</div>
+  <a href="#mcp">06 · 查真实菜单</a>
+  <a href="#select">07 · 选品打分</a>
+  <a href="#price">08 · 算价与文案</a>
+  <a href="#persist">09 · 落盘</a>
+  <div class="grp">实证</div>
+  <a href="#demo">10 · 真实对话轨迹</a>
+  <a href="#fail">11 · 失败降级表</a>
+  <a href="#why">12 · 为什么这样分工</a>
+</nav>
+
+<main>
+
+<!-- ============ 00 ============ -->
+<section id="principle">
+  <h2><span class="no">00</span>一条铁律</h2>
+  <div class="callout red">
+    <b>规则负责"想"和"算"，模型负责"说"和"看"。</b><br>
+    模型没有选品权，没有定价权，没有改单权。它可以判断、可以说话，
+    但所有落地的动作都必须回到本地代码的白名单里执行。
+  </div>
+  <p>这条铁律决定了整棵树长什么样：凡是<strong>需要确定性</strong>的地方（价格、份数、编码），
+  一律走规则；凡是<strong>规则写不出来</strong>的地方（这句话够不够清楚、这份菜单像不像人点的），
+  才交给模型 —— 而且只让它<strong>输出判断</strong>，不让它输出结果。</p>
+
+  <table>
+    <tr><th>能力</th><th>归属</th><th>为什么</th></tr>
+    <tr><td>判一句话清不清晰</td><td><span class="tag llm">模型</span></td><td>正则写不出"这句话够不够我直接选品"，但模型能</td></tr>
+    <tr><td>抽忌口 / 人数 / 预算</td><td><span class="tag llm">模型</span> + <span class="tag rule">规则并集</span></td><td>模型会漏，忌口漏一个是安全事故，规则必须兜住</td></tr>
+    <tr><td>从记忆和时间推方向</td><td><span class="tag llm">模型</span></td><td>要把"很烦"翻译成"重口/脆的/带辣的"，这活儿规则干不了</td></tr>
+    <tr><td>挑哪个商品、配几份</td><td><span class="tag rule">规则</span></td><td>必须可复现。同样输入 100 次结果一致，演示绝不翻车</td></tr>
+    <tr><td>判断这单合不合理</td><td><span class="tag llm">模型</span></td><td>"一个人四个主食"这种常识，规则穷举不完</td></tr>
+    <tr><td>执行纠偏</td><td><span class="tag local">本地白名单</span></td><td>模型只说"删第 2 项"，删不删、怎么删由代码定</td></tr>
+    <tr><td>价格 / 份数 / 商品编码</td><td><span class="tag rule">规则</span></td><td>钱的事一个字都不能让模型碰</td></tr>
+    <tr><td>写开场白和收尾金句</td><td><span class="tag llm">模型</span></td><td>这是模型唯一有创作自由的地方</td></tr>
+  </table>
+</section>
+
+<!-- ============ 01 全局树 ============ -->
+<section id="tree">
+  <h2><span class="no">01</span>全局树状图</h2>
+  <p>从下往上看不方便，从上往下看这棵树的形状：<strong>主干只有一条</strong>，
+  但沿途有四个地方<strong>真正分叉</strong> —— 分叉出去的支路要么自己走完返回、要么汇回主干。
+  看见分叉就知道"这里做了个决定"。</p>
+
+  <div class="legend">
+    <span><i style="border-color:#8E6FC4;background:#FBFAFE"></i>模型判断</span>
+    <span><i style="border-color:#D4A017;background:#FFFDF5"></i>规则计算</span>
+    <span><i style="border-color:#3E7BB5;background:#F7FAFD"></i>真实数据</span>
+    <span><i style="border-color:#1E7B4F;background:#F6FBF8"></i>落盘 / 同步</span>
+    <span><i style="border-color:#DA291C;background:#FDF3F1"></i>出口 / 决策点</span>
+  </div>
+
+  <div class="tree-box">
+  <svg class="tree-svg" viewBox="0 0 1010 1340" role="img" aria-label="点餐引擎全局树状流程">
+    <defs>
+      <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="#B9A88F"/>
+      </marker>
+      <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="#C4B49C"/>
+      </marker>
+      <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="#DA291C"/>
+      </marker>
+    </defs>
+
+    <!-- ===== 入口 ===== -->
+    <g class="tg-x"><rect x="415" y="16" width="170" height="38"/><text class="t" x="500" y="35" style="font-size:12.5px">用户说一句话</text></g>
+
+    <!-- 入口 → ① -->
+    <path class="ct-main" d="M500,54 L500,84" marker-end="url(#a1)"/>
+
+    <!-- ===== ① 意图解析 ===== -->
+    <g class="tn llm hot">
+      <rect x="290" y="88" width="420" height="80"/>
+      <text class="t" x="500" y="118" style="font-size:14.5px">① LLM 意图解析</text>
+      <text class="s" x="500" y="140">抽 people / budget / taboo / taste / mood　→　同时判 clarity</text>
+    </g>
+    <text class="lbl pur" x="722" y="120" style="text-anchor:start">clarity?</text>
+
+    <!-- ① → 分叉 -->
+    <path class="ct-main" d="M500,168 L500,196"/>
+    <path class="ct-main" d="M218,196 L782,196"/>
+    <path class="ct-main" d="M218,196 L218,228" marker-end="url(#a1)"/>
+    <path class="ct-main" d="M782,196 L782,228" marker-end="url(#a1)"/>
+
+    <!-- ===== 分叉一 ===== -->
+    <g class="tn hot">
+      <rect x="106" y="232" width="224" height="56"/>
+      <text class="t" x="218" y="252" style="fill:#B02015">vague · 模糊</text>
+      <text class="s" x="218" y="272">光靠这句挑不出东西</text>
+    </g>
+    <g class="tn hot">
+      <rect x="670" y="232" width="224" height="56"/>
+      <text class="t" x="782" y="252" style="fill:#B02015">clear · 明确</text>
+      <text class="s" x="782" y="272">有口味 / 人数 / 预算 / 忌口</text>
+    </g>
+
+    <!-- vague → 旁路 -->
+    <path class="ct" d="M218,288 L218,322" marker-end="url(#a2)"/>
+
+    <!-- ===== 旁路 ===== -->
+    <g class="tn llm">
+      <rect x="50" y="326" width="336" height="96"/>
+      <text class="t" x="218" y="352">①.5 旁路：用户知识 + 当下时间</text>
+      <text class="s" x="218" y="374">记忆：忌口 · 常点 · 预算区间 · 最近情绪</text>
+      <text class="s" x="218" y="394">时间：时段 · 星期 · 节气 · 水逆</text>
+      <text class="s" x="218" y="412" style="fill:#6B4FA1;font-weight:700">产出：方向标签 + 推定人数（不是菜单）</text>
+    </g>
+
+    <!-- clear 直下 -->
+    <path class="ct" d="M782,288 L782,460"/>
+
+    <!-- 旁路汇入 -->
+    <path class="ct" d="M218,422 L218,460"/>
+    <path class="ct-main" d="M218,460 L782,460"/>
+    <path class="ct-main" d="M500,460 L500,492" marker-end="url(#a1)"/>
+    <text class="lbl" x="380" y="450" style="text-anchor:middle">判断结论并入 intent</text>
+
+    <!-- ===== ② MCP ===== -->
+    <g class="tn data">
+      <rect x="320" y="496" width="360" height="76"/>
+      <text class="t" x="500" y="524">② 导入 MCP 真实数据</text>
+      <text class="s" x="500" y="546">门店 · 商品 · 优惠券 · 营养（到店/外送两套编码）</text>
+    </g>
+    <path class="ct-main" d="M500,572 L500,604" marker-end="url(#a1)"/>
+
+    <!-- ===== ③ 选品 ===== -->
+    <g class="tn rule">
+      <rect x="300" y="608" width="400" height="76"/>
+      <text class="t" x="500" y="636">③ 选品（确定性打分）</text>
+      <text class="s" x="500" y="658">&gt;0 入围 · 预算装箱 · 结构上限 · 忌口硬过滤</text>
+    </g>
+    <path class="ct-main" d="M500,684 L500,716" marker-end="url(#a1)"/>
+
+    <!-- ===== ④ 判断 ===== -->
+    <g class="tn llm hot">
+      <rect x="280" y="720" width="440" height="80"/>
+      <text class="t" x="500" y="748" style="font-size:14.5px">③.5 出单判断（LLM）</text>
+      <text class="s" x="500" y="770">输入：用户原话 + 这一单 + <tspan style="fill:#B02015;font-weight:700">购物车结论</tspan></text>
+    </g>
+
+    <!-- 判断 → 三叉 -->
+    <path class="ct-main" d="M500,800 L500,824"/>
+    <path class="ct-main" d="M151,824 L849,824"/>
+    <path class="ct-main" d="M151,824 L151,856" marker-end="url(#a1)"/>
+    <path class="ct-main" d="M500,824 L500,856" marker-end="url(#a1)"/>
+    <path class="ct-main" d="M849,824 L849,856" marker-end="url(#a1)"/>
+
+    <!-- ===== 分叉三：三档 ===== -->
+    <g class="tn">
+      <rect x="56" y="860" width="190" height="60"/>
+      <text class="t" x="151" y="880" style="fill:#1E7B4F">keep</text>
+      <text class="s" x="151" y="900">没问题，不动</text>
+    </g>
+    <g class="tn">
+      <rect x="402" y="860" width="196" height="60"/>
+      <text class="t" x="500" y="880" style="fill:#8A6A00">prune · 做减法</text>
+      <text class="s" x="500" y="900">本地删多出来的项</text>
+    </g>
+    <g class="tn">
+      <rect x="754" y="860" width="190" height="60"/>
+      <text class="t" x="849" y="880" style="fill:#B02015">major · 重配</text>
+      <text class="s" x="849" y="900">整单骨架不对</text>
+    </g>
+
+    <!-- rebuild 回环：从 major 右侧出发，沿右边缘上行回到选品（不与其他连线交叉） -->
+    <path class="ct-hot" d="M944,890 L972,890 L972,646 L700,646" marker-end="url(#a3)"/>
+    <text class="lbl red" x="958" y="768" style="text-anchor:end;font-size:10.5px">重配</text>
+    <text class="lbl red" x="958" y="784" style="text-anchor:end;font-size:10.5px">回环</text>
+
+    <!-- 三档汇合 → 算价 -->
+    <path class="ct" d="M151,920 L151,952"/>
+    <path class="ct" d="M500,920 L500,952"/>
+    <path class="ct" d="M849,920 L849,952"/>
+    <path class="ct-main" d="M151,952 L849,952"/>
+    <path class="ct-main" d="M500,952 L500,982" marker-end="url(#a1)"/>
+
+    <!-- ===== ⑤ 算价 ===== -->
+    <g class="tn rule">
+      <rect x="320" y="986" width="360" height="76"/>
+      <text class="t" x="500" y="1014">④ 算价</text>
+      <text class="s" x="500" y="1036">小计 · 优惠券 · 外送费 + 打包费 · 营养估算</text>
+    </g>
+    <path class="ct-main" d="M500,1062 L500,1092" marker-end="url(#a1)"/>
+
+    <!-- ===== ⑥ 文案 ===== -->
+    <g class="tn llm">
+      <rect x="280" y="1096" width="440" height="76"/>
+      <text class="t" x="500" y="1124">⑤ 文案生成（LLM）</text>
+      <text class="s" x="500" y="1146">只输出 {hook, quote} 两个字段 —— 菜单和价格它碰不到</text>
+    </g>
+
+    <!-- 文案 → 双出口 -->
+    <path class="ct-main" d="M500,1172 L500,1196"/>
+    <path class="ct-main" d="M300,1196 L700,1196"/>
+    <path class="ct-main" d="M300,1196 L300,1226" marker-end="url(#a1)"/>
+    <path class="ct-main" d="M700,1196 L700,1226" marker-end="url(#a1)"/>
+
+    <g class="tn db">
+      <rect x="170" y="1230" width="260" height="66"/>
+      <text class="t" x="300" y="1252">⑥ 落盘</text>
+      <text class="s" x="300" y="1274">chats 表 · 记住这单和情绪</text>
+    </g>
+    <g class="tn db">
+      <rect x="570" y="1230" width="260" height="66"/>
+      <text class="t" x="700" y="1252">⑥ 同步购物车</text>
+      <text class="s" x="700" y="1274">整份替换 · 右侧清单立刻变</text>
+    </g>
+  </svg>
+  </div>
+
+  <div class="callout blue">
+    <b>怎么读这棵树：</b>主干从「用户说一句话」一路向下，中间只有两条线会<strong>离开主干再回来</strong>——
+    左边那条是<strong>旁路</strong>（模糊时替用户补全），右边那条红虚线是<strong>重配回环</strong>（判断说这单不像话时，
+    带着"要避开的商品"退回选品重来）。其余全是主干上的串行步骤。
+  </div>
+</section>
+
+<!-- ============ 02 分叉一 ============ -->
+<section id="fork1">
+  <h2><span class="no">02</span>分叉一：这句话够不够清楚</h2>
+
+  <p>这是整棵树最开始、也最关键的一个判断。<strong>判定权完全交给模型</strong>，规则不再说话。</p>
+
+  <div class="callout red">
+    <b>为什么这一刀必须让模型来切：</b>旧版是规则靠「有没有 people / budget / taboo / taste」推"够不够清楚"，
+    结果两头都错 ——
+    <br>· 「今天好烦」因为句子里有"今天"（被当成时间约束）被判成<strong>清楚</strong>，直接硬选品，选出来全靠规则瞎猜；
+    <br>· 「帮我点个午餐」因为什么约束都没有被判成<strong>模糊</strong>，于是反问「想吃带劲的还是舒服的」—— 用户已经说要吃饭了，还问他要哪种感觉。
+  </div>
+
+  <p>新口径只有一句话：<strong>光靠这句原话，能不能直接在菜单上挑出东西。</strong>挑得出来就是 clear，挑不出来就是 vague。</p>
+
+  <div class="branch two">
+    <div class="bcard">
+      <h4>vague · 走旁路</h4>
+      <p><b>特征</b>：只有状态或态度，没有可选品条件</p>
+      <p class="kv">「今天很烦」　「心情不错」</p>
+      <p class="kv">「帮我点个午餐」　「我饿了」</p>
+      <p class="kv">「随便」「吃点什么好」</p>
+      <p><b>去哪</b>：→ 分叉二，旁路替用户补全</p>
+    </div>
+    <div class="bcard rule">
+      <h4>clear · 直接进主循环</h4>
+      <p><b>特征</b>：说了具体约束，能直接选品</p>
+      <p class="kv">「我要吃辣的」　口味</p>
+      <p class="kv">「3 个人 50 块」　人数 + 预算</p>
+      <p class="kv">「花生过敏」　硬忌口</p>
+      <p><b>去哪</b>：→ 跳过旁路，直接第 ② 步查菜单</p>
+    </div>
+  </div>
+
+  <h3>硬约束 → 强制 clear（防模型手滑的兜底）</h3>
+  <p>模型再准也会抽风。所以代码里有一道<strong>单向强制</strong>：只要用户明说了忌口 / 人数 / 预算，
+  就算模型判 vague，也<strong>一律拉回 clear</strong>。</p>
+  <pre><span class="c">// llm-intent.service.ts · mergeIntent</span>
+<span class="c">// 有明确约束就直接进选品，这是我们能百分百确定的</span>
+<span class="k">if</span> (taboo.length > <span class="k">0</span> || explicit.budget !== undefined || explicit.people !== undefined) {
+  clarity = <span class="s">'clear'</span>;
+}</pre>
+  <p>理由很实在：用户写了「花生过敏」，模型要是判 vague，白跑一趟旁路不说，旁路还有可能把忌口弄丢。
+  <strong>忌口漏判是吃出问题的事，不能赌。</strong></p>
+
+  <h3>忌口为什么是「模型 + 规则取并集」</h3>
+  <p>这一处是唯一<strong>不由模型单独说了算</strong>的字段。合并规则：</p>
+  <table>
+    <tr><th>情况</th><th>处理</th><th>原因</th></tr>
+    <tr><td>模型漏了忌口，规则抽到了</td><td>并集收下</td><td>漏一个就是安全事故，规则必须捞回来</td></tr>
+    <tr><td>模型提了新忌口，原文里有「不吃 / 过敏 / 别放」</td><td>收下</td><td>模型补上了规则没覆盖的说法</td></tr>
+    <tr><td>模型把口味写成忌口（原文没有否定词）</td><td><b>丢弃</b></td><td>用户说"想吃辣"，模型写 taboo:["辣"]，采信会把整个辣味菜单清空 —— 比漏判更糟</td></tr>
+    <tr><td>口味与忌口重叠</td><td>口味让位</td><td>忌口是硬约束，优先级更高</td></tr>
+  </table>
+
+  <div class="shot">
+    <b>真实日志：</b><span class="code-inline">模型给的忌口「辣」原文里找不到依据，已丢弃</span>
+  </div>
+</section>
+
+<!-- ============ 03 分叉二 ============ -->
+<section id="fork2">
+  <h2><span class="no">03</span>分叉二：旁路 —— 模糊不等于反问</h2>
+
+  <p>用户说「今天很烦」时，系统有两条路可走：<strong>把问题问回去</strong>，或者<strong>自己替他想</strong>。这里选了后者。</p>
+
+  <div class="callout purple">
+    <b>旁路的产物不是菜单，是一份「判断结论」。</b><br>
+    它只产出方向标签（辣 / 热 / 大份）、推定人数、该避开的商品，然后<strong>并入 intent</strong>，
+    交给确定性的选品引擎去真实菜单里落地。所以"模糊"不会变成"再问一遍用户"，而是变成"系统替你多想了想"。
+  </div>
+
+  <h3>旁路拿到什么</h3>
+  <div class="branch two">
+    <div class="bcard llm">
+      <h4>输入一：你的记忆</h4>
+      <ul>
+        <li>忌口 / 过敏（绝对不能沾）</li>
+        <li>口味标签、常点单品、特制习惯</li>
+        <li>历史预算区间</li>
+        <li>最近几天的情绪记录</li>
+      </ul>
+    </div>
+    <div class="bcard data">
+      <h4>输入二：当下的时间事实</h4>
+      <ul>
+        <li>时:分 + 星期几</li>
+        <li>时段（早餐 / 午餐 / 下午茶 / 夜市 / 深夜）</li>
+        <li>节气 + 它的意境描述</li>
+        <li>是否在水逆期间、第几天</li>
+      </ul>
+    </div>
+  </div>
+
+  <p>时间事实由编排器<strong>算好后传进去</strong>，不是让模型自己猜今天几号 —— 保证和主链路用的是同一个时间。</p>
+
+  <h3>输出之后怎么合并：只填空，不覆盖</h3>
+  <table>
+    <tr><th>字段</th><th>合并方式</th><th>为什么</th></tr>
+    <tr><td>口味倾向</td><td>并集，但先<strong>规范化</strong></td><td>模型爱说「解压」「省事」，选品引擎不认这些词，得先翻译成「辣」「大份」</td></tr>
+    <tr><td>人数</td><td>只填空</td><td>用户说了 5 人，绝不能用旁路猜的 2 人</td></tr>
+    <tr><td>情绪</td><td>意图没结论才用旁路的</td><td>情绪策略直接影响选品打分</td></tr>
+    <tr><td>预算</td><td><b>永远不进显式约束</b></td><td>见下方红框</td></tr>
+  </table>
+
+  <div class="callout red">
+    <b>踩过的坑：旁路推的预算不能当"用户说的预算"。</b><br>
+    记忆里存着预算区间 <span class="code-inline">[46.28, 87.5]</span>，旁路很自然会填 budget = 87.5。
+    但 <span class="code-inline">explicit.budget</span> 的语义是"<strong>用户说了这个数</strong>"，它会导致三件事：
+    ① 回复卡片上冒出一条预算进度条；② 触发超预算重选；③ 落进记忆当成事实。<br>
+    而模型每次推的数还不一样（实测同一句话推出过 87 / 88 / 87.5 三个版本），
+    于是<strong>同一句话每次点出来的菜单都不同</strong>。现在它只进 <span class="code-inline">softBudget</span>，纯参考，不当墙。
+  </div>
+
+  <h3>口味词怎么翻译（这段代码不显眼但很关键）</h3>
+  <pre><span class="c">// 模型的语言 → 引擎的语言</span>
+<span class="k">解压</span> → 辣 + 大份　　<span class="k">省事</span> → 大份　　<span class="k">暖胃</span> → 热
+<span class="k">提神</span> → 咖啡　　　　<span class="k">重口</span> → 辣　　　<br>
+<span class="c">// 认不出来的一律丢掉，不留成噪声</span></pre>
+  <p>不做这一步的后果是<strong>静默失效</strong>：标签对不上不会报错，只是选品一个字都没听进去 ——
+  模型说了半天，菜单毫无变化，而日志里看起来一切正常。</p>
+</section>
+
+<!-- ============ 04 分叉三 ============ -->
+<section id="fork3">
+  <h2><span class="no">04</span>分叉三：出单判断（三档）</h2>
+
+  <p>菜单配好之后、算价之前，请模型看一眼：<strong>这份单像不像人真正会点的。</strong>
+  结论分三档，每档对应一个明确的本地动作。</p>
+
+  <div class="tree-box">
+  <svg class="tree-svg" viewBox="0 0 980 520" role="img" aria-label="出单判断决策树">
+    <defs>
+      <marker id="b1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="#B9A88F"/>
+      </marker>
+      <marker id="b2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="#DA291C"/>
+      </marker>
+    </defs>
+
+    <g class="tn rule"><rect x="330" y="14" width="320" height="56"/>
+      <text class="t" x="490" y="34">规则选出的菜单</text>
+      <text class="s" x="490" y="54">已过预算 / 忌口 / 结构上限</text></g>
+    <path class="ct-main" d="M490,70 L490,98" marker-end="url(#b1)"/>
+
+    <g class="tn llm hot"><rect x="310" y="102" width="360" height="76"/>
+      <text class="t" x="490" y="126" style="font-size:14px">模型看一眼：像不像人点的</text>
+      <text class="s" x="490" y="148">主食份数 / 饮料重复 / 甜品过量 / 有无荒唐搭配</text></g>
+
+    <path class="ct-main" d="M490,178 L490,200"/>
+    <path class="ct-main" d="M160,200 L820,200"/>
+    <path class="ct-main" d="M160,200 L160,230" marker-end="url(#b1)"/>
+    <path class="ct-main" d="M490,200 L490,230" marker-end="url(#b1)"/>
+    <path class="ct-main" d="M820,200 L820,230" marker-end="url(#b1)"/>
+
+    <g class="tn"><rect x="68" y="234" width="184" height="50"/>
+      <text class="t" x="160" y="259" style="fill:#1E7B4F">none</text></g>
+    <g class="tn"><rect x="398" y="234" width="184" height="50"/>
+      <text class="t" x="490" y="259" style="fill:#8A6A00">minor</text></g>
+    <g class="tn"><rect x="728" y="234" width="184" height="50"/>
+      <text class="t" x="820" y="259" style="fill:#B02015">major</text></g>
+
+    <path class="ct" d="M160,284 L160,318" marker-end="url(#b1)"/>
+    <path class="ct" d="M490,284 L490,318" marker-end="url(#b1)"/>
+    <path class="ct" d="M820,284 L820,318" marker-end="url(#b1)"/>
+
+    <g class="tn"><rect x="60" y="322" width="200" height="72"/>
+      <text class="t" x="160" y="344">keep</text>
+      <text class="s" x="160" y="364">一个字节都不改</text>
+      <text class="s" x="160" y="382">直接去算价</text></g>
+    <g class="tn"><rect x="390" y="322" width="200" height="72"/>
+      <text class="t" x="490" y="344">prune · 本地减法</text>
+      <text class="s" x="490" y="364">删掉模型点的序号</text>
+      <text class="s" x="490" y="382">只删不加，价格只降</text></g>
+    <g class="tn"><rect x="720" y="322" width="200" height="72"/>
+      <text class="t" x="820" y="344">rebuild · 整单重配</text>
+      <text class="s" x="820" y="364">带回"要避开的商品名"</text>
+      <text class="s" x="820" y="382">退到选品重新组一单</text></g>
+
+    <!-- 回环 -->
+    <path class="ct-hot" d="M920,358 L960,358 L960,42 L652,42" marker-end="url(#b2)"/>
+    <text class="lbl red" x="948" y="188" style="text-anchor:end;font-size:10.5px">重配回环</text>
+    <text class="lbl red" x="948" y="204" style="text-anchor:end;font-size:10.5px">只跑一次</text>
+  </svg>
+  </div>
+
+  <h3>模型这次能输出什么、不能输出什么</h3>
+  <table>
+    <tr><th>字段</th><th>说明</th><th>本地怎么处理</th></tr>
+    <tr><td><code>severity</code></td><td>none / minor / major</td><td>决定走哪一档，但必须自洽（见下方降级规则）</td></tr>
+    <tr><td><code>remove</code></td><td>要删的<b>序号</b>，如 <code>[1,3]</code></td><td>越界一律忽略，绝不误删</td></tr>
+    <tr><td><code>avoid</code></td><td>只在 major 时填，<b>必须原样抄菜单上的名字</b></td><td>对不上菜单的当建议句丢掉</td></tr>
+  </table>
+
+  <div class="callout">
+    <b>为什么只要序号，不要商品编码。</b>早期让模型输出嵌套的 <code>{kind, fix, index}</code> 对象，
+    它经常把 issues 写成字符串数组、把 fix 字段漏掉，整条复核对不上任何动作，等于白跑。
+    现在只要一个数字数组，稳定得多 —— 而且从根上不给它机会返回商品编码。
+  </div>
+
+  <h3>三道自洽性降级</h3>
+  <ol>
+    <li><b>说 major 但既给不出 avoid 也给不出 remove</b> → 降成 none。否则会触发一次"不知道为什么重配"的重选，白烧额度还可能配得更乱。</li>
+    <li><b>说 major 但 avoid 为空</b> → 降成 minor，只做减法。</li>
+    <li><b>纠偏会把菜单清空</b> → 放弃本次纠偏。用户拿到空菜单比拿到一份略多的菜单更糟。</li>
+  </ol>
+
+  <div class="shot">
+    <b>真实日志：</b><span class="code-inline">复核判 minor：一个人两个主食，过量了 | 删 #2</span><br>
+    执行：<span class="code-inline">删除 #2 麦乐鸡开心乐园餐（remove_extra_main）</span>　→　¥64.00 变成 ¥39.40
+  </div>
+
+  <p>注意 <code>major</code> 的重配也<strong>不让模型选品</strong>：它只交出"最该换掉的 1-2 个名字"，
+  规则拿着这个名字回候选池做<strong>降权</strong>（降到负分），再重新组单。
+  视频演示里如果重配结果和原来完全一样，会退化成 prune，不会无限循环 —— <strong>只跑一次</strong>。</p>
+</section>
+
+<!-- ============ 05 分叉四 ============ -->
+<section id="fork4">
+  <h2><span class="no">05</span>分叉四：购物车结论怎么用</h2>
+
+  <p>判断环节除了看"这一单"，还要看"车里现在有什么"。但这两者的<strong>关系语义</strong>必须先讲清楚，否则模型会给出一堆无效建议。</p>
+
+  <div class="callout blue">
+    <b>关键前提：主循环出单是「整份替换」购物车。</b>不是追加。
+    所以车里现有的东西代表的是<strong>用户上一轮拿到、并且可能手动调过的结果</strong> ——
+    它的价值不在于"去重"，而在于<strong>它记录了用户的编辑痕迹</strong>。
+  </div>
+
+  <div class="tree-box">
+  <svg class="tree-svg" viewBox="0 0 980 400" role="img" aria-label="购物车结论的两条用途">
+    <defs>
+      <marker id="c1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="#B9A88F"/>
+      </marker>
+      <marker id="c2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="#3E7BB5"/>
+      </marker>
+    </defs>
+
+    <g class="tn data"><rect x="380" y="14" width="220" height="52"/>
+      <text class="t" x="490" y="40">读一眼购物车</text></g>
+
+    <path class="ct-main" d="M490,66 L490,92"/>
+    <path class="ct-main" d="M230,92 L750,92"/>
+    <path class="ct-main" d="M230,92 L230,124" marker-end="url(#c1)"/>
+    <path class="ct-main" d="M750,92 L750,124" marker-end="url(#c1)"/>
+
+    <g class="tn hot"><rect x="90" y="128" width="280" height="76"/>
+      <text class="t" x="230" y="150">① 用户删掉了什么</text>
+      <text class="s" x="230" y="170">对比上一轮菜单 vs 现在的车</text>
+      <text class="s" x="230" y="188" style="fill:#B02015">→ 选品时降权，别再配回来</text></g>
+
+    <g class="tn data"><rect x="610" y="128" width="280" height="76"/>
+      <text class="t" x="750" y="150">② 车里现在有什么</text>
+      <text class="s" x="750" y="170">名字 + 份数 + 真实合计金额</text>
+      <text class="s" x="750" y="188">→ 交给判断环节当上下文</text></g>
+
+    <path class="ct" d="M230,204 L230,246" marker-end="url(#c1)"/>
+    <path class="ct" d="M750,204 L750,246" marker-end="url(#c1)"/>
+
+    <g class="tn rule"><rect x="96" y="250" width="268" height="66"/>
+      <text class="t" x="230" y="272">selector 的 avoidNames</text>
+      <text class="s" x="230" y="294">只降权不删池，凑不出单还能兜底</text></g>
+
+    <g class="tn llm"><rect x="616" y="250" width="268" height="66"/>
+      <text class="t" x="750" y="272">判断环节的 cart 字段</text>
+      <text class="s" x="750" y="294">明确告诉模型：只有这一单的序号能动</text></g>
+  </svg>
+  </div>
+
+  <h3>为什么「用户删了什么」必须单独检测</h3>
+  <div class="shot">
+    上一轮系统给的是「麦辣鸡腿堡套餐 + 薯条 + 可乐」，用户手动把<strong>薯条</strong>删了。<br>
+    这一轮他说「来点辣的」—— 如果系统不看购物车，会重新配一份含薯条的菜单，整份替换购物车。<br>
+    <b>用户的删除操作被无声抹掉，ta 会觉得"我删的东西你怎么又给我加回来了"。</b>
+  </div>
+  <p>所以代码里有一处专门的检测：读 <code>chats</code> 表里最近一条 <code>reply_json</code>，
+  拿上一轮的菜单和现在的购物车对比，<strong>少掉的那些就认定为用户主动删除</strong>，转成选品时的降权名单。</p>
+
+  <div class="callout green">
+    <b>为什么要拿上一轮的单来比：</b>购物车里只有"现在有什么"，没有"本来有什么"。
+    少的那一样到底是用户删的、还是上一轮本来就没有 —— 必须和上一轮对比才知道。
+    而且策略很保守：<strong>只要对不上名字就当没这回事，不猜。</strong>
+  </div>
+
+  <p>反过来，模型这边要<strong>明确禁止</strong>它去建议删车里的东西 —— 本地白名单只认这一单的下标，越界直接忽略，
+  它的建议会变成无效动作，白烧几百毫秒。</p>
+</section>
+
+<!-- ============ 06 MCP ============ -->
+<section id="mcp">
+  <h2><span class="no">06</span>查真实菜单</h2>
+
+  <p>这一步是<strong>整条链路上唯一的数据来源</strong>。没有它，后面所有环节都是编的。</p>
+
+  <table>
+    <tr><th>查什么</th><th>接口</th><th>失败怎么办</th></tr>
+    <tr><td>门店</td><td>query-nearby-stores（只接受「城市 + 关键词」）</td><td>缺定位就如实报 NeedLocation，不猜</td></tr>
+    <tr><td>商品</td><td>query-store-menu</td><td>空列表直接报错，不给假菜单</td></tr>
+    <tr><td>优惠券</td><td>query-coupons</td><td>静默失败，不影响出单</td></tr>
+    <tr><td>营养</td><td>query-nutrition</td><td>静默失败，不影响出单</td></tr>
+  </table>
+
+  <div class="callout red">
+    <b>到店和外送是两套商品编码。</b>实测同一门店 88 个到店编码里，有 75 个在外送侧不存在。
+    所以履约方式必须在对话开始时就定下来，选品、算价、下单全链路按对应场景走 ——
+    中途切换会导致菜单里的商品根本下不了单。
+  </div>
+</section>
+
+<!-- ============ 07 选品 ============ -->
+<section id="select">
+  <h2><span class="no">07</span>选品打分</h2>
+
+  <p>确定性打分，同一输入 100 次结果完全一致。这是"演示绝不翻车"的地基。</p>
+
+  <h3>加分项</h3>
+  <table>
+    <tr><th>权重</th><th>条件</th></tr>
+    <tr><td>+5</td><td>套餐份数正好匹配人数（双人餐配 2 人）</td></tr>
+    <tr><td>+4</td><td>命中用户明说的口味</td></tr>
+    <tr><td>+3</td><td>命中节气关键词 / 用户本命单品</td></tr>
+    <tr><td>+2</td><td>口味匹配当前情绪策略、命中特制习惯、套餐自带饮料或小食</td></tr>
+    <tr><td>+1</td><td>价格落在平时的价位区间</td></tr>
+  </table>
+
+  <h3>减分项</h3>
+  <table>
+    <tr><th>权重</th><th>条件</th></tr>
+    <tr><td>−4</td><td>用户说要减肥，这个是高热量</td></tr>
+    <tr><td>−5</td><td>命中当前情绪该避开的东西</td></tr>
+    <tr><td>−6</td><td>根本不是吃的（调味酱 / 周边 / 毛绒）</td></tr>
+    <tr><td><b>−100</b></td><td><b>命中忌口 —— 直接出局</b></td></tr>
+  </table>
+
+  <div class="callout">
+    <b>套装自带的东西要"记账"。</b>麦辣鸡腿堡套餐里本来就有可乐和薯条。
+    如果不把这份套餐自带的饮料/小食算进结构额度，系统会认为"还欠一杯饮料 + 一份小食"，
+    紧接着补上无糖可乐和麦乐鸡 —— 一个人一餐两杯饮料两份小食。
+    这是"套餐配了饮料又点一杯"的根因。
+  </div>
+
+  <h3>人数：没说就按 1 个人</h3>
+  <p>优先级是<strong>用户明说 &gt; 旁路推断 &gt; 默认 1 人</strong>。没说人数就一个人，不给"你是不是两个人吃"这种反问。</p>
+  <div class="callout red">
+    <b>「两个汉堡」是量词不是人数。</b>早期只认"数字 + 个/位/人"，
+    「两个汉堡一杯可乐」被判成 2 人，系统按 2 人份配菜 —— 用户一个人吃，收到双份主食。
+    现在「个」后面紧跟食物名就跳过。
+  </div>
+
+  <h3>记忆里的忌口要给当轮原话让位</h3>
+  <div class="shot">
+    <b>真实踩到的：</b>记忆里记着「忌辣」，这一轮用户说「我要吃辣的」。<br>
+    两边都当真 → 选品因为 taste=辣 挑了一份龙焰鸡腿堡，文案却写
+    「辣的我得拦一下 —— 你忌辣这事儿我记着」。<b>一边给一边拦，用户直接懵。</b>
+  </div>
+  <p>规则：<strong>当轮原话 &gt; 历史记忆</strong>。但只让「口味型忌口」让位（辣 / 甜 / 冰 / 咖啡…），
+  过敏源<strong>永远不让</strong> —— 花生、坚果、海鲜不在口味词表里，永远不会被摘掉。安全优先于顺从。</p>
+</section>
+
+<!-- ============ 08 算价文案 ============ -->
+<section id="price">
+  <h2><span class="no">08</span>算价与文案</h2>
+
+  <div class="branch two">
+    <div class="bcard rule">
+      <h4>④ 算价（纯规则）</h4>
+      <p>小计 → 优惠券抵扣 → 外送费 + 打包费 → 营养估算</p>
+      <p><b>价格永远来自真实数据</b>，模型碰不到。</p>
+      <p>套餐价与单点价要按 MCP 返回的实际情况取，不能自己算。</p>
+    </div>
+    <div class="bcard llm">
+      <h4>⑤ 文案生成（模型唯一自由区）</h4>
+      <p>只输出两个字段：<code>{hook, quote}</code></p>
+      <p>开场 2-3 句，要点明推荐的<strong>具体依据</strong>（节气 / 星座 / 记忆 / 情绪）。</p>
+      <p>收尾 1-2 句，要有一句能让人截图的话。</p>
+    </div>
+  </div>
+
+  <h3>文案层的硬禁止</h3>
+  <ul>
+    <li>"亲爱的用户""您好""以下是为您推荐" —— 像客服，不像朋友</li>
+    <li>编造任何商品名、价格、优惠、热量</li>
+    <li>输出菜单结构 —— 菜单已经由系统生成好了，它不需要也没资格输出</li>
+    <li>markdown 语法、列表符号、emoji 堆砌</li>
+  </ul>
+
+  <div class="callout green">
+    <b>安全模式开启时，所有这些玩法全部禁用。</b>禁节气、禁星座、禁水逆、禁话术技巧。
+    用平实的语言，像一个真正关心人的朋友。可以说"我在"，不要说"我懂你"——你其实不懂。
+  </div>
+</section>
+
+<!-- ============ 09 落盘 ============ -->
+<section id="persist">
+  <h2><span class="no">09</span>落盘与同步</h2>
+
+  <p>最后一步是<strong>两个并行的写操作</strong>，它们互不阻塞。</p>
+
+  <div class="branch two">
+    <div class="bcard db">
+      <h4>写 chats 表</h4>
+      <ul>
+        <li>用户原话、回复全文、菜单快照</li>
+        <li>标记 <code>clarifyOnly</code>：这一轮是不是只问了句话</li>
+        <li>下轮判断"上次是不是刚反问了"就靠它</li>
+      </ul>
+    </div>
+    <div class="bcard db">
+      <h4>整份替换购物车</h4>
+      <ul>
+        <li>按 (user_id, fulfillment) 存一份</li>
+        <li>到店和外送分开存 —— 编码是两套，混着放必然串场</li>
+        <li>价格存单价，小计永远现算</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout">
+    <b>为什么价格存单价而不是小计：</b>用户改数量时，存小计会算错。
+    合计（含外送费）永远现算 —— 用户看到的"合计"必须是最终付款金额，不是商品价之和。
+  </div>
+</section>
+
+<!-- ============ 10 demo ============ -->
+<section id="demo">
+  <h2><span class="no">10</span>真实对话轨迹</h2>
+
+  <h3>案例一：模糊意图「今天很烦」</h3>
+  <p><span class="tag llm">跑旁路</span><span class="tag rule">不反问</span></p>
+  <pre><span class="c">流水线</span>：intent → context → menu → review → compose
+<span class="c">旁路</span>  ：✅ 跑了
+<span class="c">反问</span>  ：✅ 没有，直接给了菜单
+
+<span class="c">门店</span>：麦当劳厦门鹭港万达餐厅 · 午餐
+<span class="c">标题</span>：你的「水逆急救单」
+<span class="c">菜单</span>：
+  吉士汉堡包套餐 ×1  ¥26.5   <span class="c">— 应季（汉堡），你想吃的（大份），套餐自带饮料和小食</span>
+  新地            ×1  ¥12.5  <span class="c">— 应季（新地），你的本命（草莓新地）</span>
+  麦乐鸡开心乐园餐 ×1  ¥25.0  <span class="c">— 在你平时的价位</span>
+<span class="c">合计</span>：¥64.00
+
+<span class="c">开场</span>：烦就烦吧，霜降这天本来就不该顺。<span class="k">**水逆第 4 天**</span>，锅真不是你的。
+      我按摩羯的老规矩给你配的——不冒险、够大份、算得过账。</pre>
+
+  <h3>案例二：明确意图「我要吃辣的」</h3>
+  <p><span class="tag rule">跳过旁路</span><span class="tag llm">判断环节生效</span></p>
+  <pre><span class="c">流水线</span>：intent → menu → review → compose   <span class="c">（没有 context，正确跳过）</span>
+<span class="c">意图</span>  ：clear · taste=[辣] · "给出明确辣味约束，可直接选品"
+<span class="c">判断</span>  ：<span class="k">minor</span>「一个人两个主食，过量了」→ 删 #2 麦乐鸡开心乐园餐
+<span class="c">结果</span>  ：¥64.00 → ¥39.40</pre>
+
+  <div class="callout green">
+    <b>这一对的对照意义：</b>同一套代码，模糊时<strong>多绕一条旁路</strong>、明确时<strong>少绕一条</strong>，
+    而两条路最终都汇进同一个主循环，都能拿到完整菜单。这就是分叉设计要验证的东西。
+  </div>
+</section>
+
+<!-- ============ 11 fail ============ -->
+<section id="fail">
+  <h2><span class="no">11</span>失败降级表</h2>
+  <p>每一层都可能挂，<strong>任何一层挂掉都不能让用户白屏</strong>。</p>
+  <table>
+    <tr><th>哪一层挂了</th><th>降级到哪</th><th>用户看到什么</th></tr>
+    <tr><td>意图解析模型超时</td><td>规则解析 + 规则判 clarity</td><td>照常点餐，只是判断粗一点</td></tr>
+    <tr><td>旁路模型挂了</td><td>1 人 + 无倾向，直接选品</td><td>菜单朴素一点，但仍然有</td></tr>
+    <tr><td>判断环节挂了</td><td>按"没发现问题"处理</td><td>菜单照出，只是没做二次体检</td></tr>
+    <tr><td>判断返回乱码</td><td>同上</td><td>同上</td></tr>
+    <tr><td>纠偏会清空菜单</td><td>放弃纠偏</td><td>拿到略多的菜单，不是空菜单</td></tr>
+    <tr><td>MCP 门店/商品失败</td><td><b>不降级，如实报错</b></td><td>明确的错误提示，绝不给假菜单</td></tr>
+    <tr><td>优惠券 / 营养失败</td><td>静默忽略</td><td>正常出单，少显示一块信息</td></tr>
+    <tr><td>Token 失效</td><td>报 TOKEN_INVALID</td><td>引导重新登录</td></tr>
+  </table>
+  <div class="callout red">
+    <b>唯一不降级的地方是"真实数据"。</b>门店和商品查不到，必须如实报错。
+    给一份编出来的菜单，比报错更伤 —— 用户点了下不了单，还以为是系统在骗他。
+  </div>
+</section>
+
+<!-- ============ 12 why ============ -->
+<section id="why">
+  <h2><span class="no">12</span>为什么这样分工</h2>
+
+  <h3>1. 为什么不让模型直接选品</h3>
+  <p>因为价格和编码必须是<strong>真的</strong>。模型不知道今天这家店哪几样还热着、哪个编码下得了单。
+  它一旦编一个商品名，用户点下去就失败 —— 而且失败的原因用户永远搞不清。</p>
+  <p>反过来，规则选品是<strong>可复现</strong>的：同样输入 100 次得到同一份菜单，演示不会翻车，出了问题能定位到具体哪一条打分。</p>
+
+  <h3>2. 为什么意图解析反而要交给模型</h3>
+  <p>因为"这句话够不够清楚"这件事，<strong>正则写不出来</strong>。
+  「今天好烦」和「今天想吃辣的」字面结构几乎一样，但一个该走旁路、一个该直接选品。
+  只有理解语义才能分开。这一刀让模型切，是整次重构最大的收益。</p>
+
+  <h3>3. 为什么规则不能退休</h3>
+  <p>三个理由：</p>
+  <ul>
+    <li><b>忌口是安全事故</b>。模型漏一个就是吃出问题，规则必须能捞回来，所以取并集而不取交集。</li>
+    <li><b>中文数字和预算说法有十几种</b>（「仨」「两位」「一百以内」「预算八十」），正则可复现、可单测、零成本。</li>
+    <li><b>模型会挂</b>。必须有降级路径让用户还能点餐，而这条路径只能是规则。</li>
+  </ul>
+  <p>所以规则的角色从"决策者"降级成了"约束抽取器 + 兜底"—— 它不再决定"这句话清不清晰"，但它守着安全线。</p>
+
+  <h3>4. 为什么判断要放在算价之前</h3>
+  <p>因为判断可能会<strong>删东西</strong>（prune）甚至<strong>换一单</strong>（rebuild）。
+  如果先算价再判断，删完就得重算一遍，等于算两次；而算价里有优惠券核销，
+  重算可能拿到不同的券 —— 价格会跳。</p>
+
+  <h3>5. 为什么旁路只在模糊时跑</h3>
+  <p>用户说「3 个人 50 块」的时候，该给的信息都给了。
+  这时候还去分析"他今天心情怎么样、现在几点"，除了拖慢 2-4 秒、多烧一次调用之外没有任何收益 ——
+  而且推出来的结论<strong>还会干扰</strong>已经明确的约束。</p>
+
+  <div class="callout purple">
+    <b>一句话总结这棵树：</b>主干是确定的（数据 → 规则 → 算价），
+    四个分叉是判断的（清不清晰 / 往哪个方向 / 合不合理 / 车里有什么），
+    而所有判断的<strong>执行权</strong>始终留在本地代码手里。
+  </div>
+</section>
+
+</main>
+</div>
+
+<div class="foot">
+  麦门知己 · 点餐引擎运行逻辑（树状拆解版）· 依据 <code>server/src/services/orchestrator.ts</code> 等实际代码整理 · 297 条测试全绿
+</div>
+
+</body>
+</html>

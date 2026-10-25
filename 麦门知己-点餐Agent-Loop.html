@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>麦门知己 · 实际点餐 Agent Loop（代码实证版 v2）</title>
+<style>
+  :root{
+    --red:#DA291C; --red-dark:#B02015; --yellow:#FFC72C; --yellow-soft:#FFF7E0;
+    --ink:#2B2118; --ink-2:#6B5D4F; --ink-3:#9A8B7A; --line:#EFE4D3; --bg:#FBF7F0; --card:#FFFFFF;
+    --green:#1E7B4F; --green-soft:#E8F5EE; --blue:#1F5FA8; --blue-soft:#EEF4FB; --purple:#6B4FA1;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;background:var(--bg);color:var(--ink);line-height:1.75;}
+  .hero{background:linear-gradient(135deg,var(--red) 0%,var(--red-dark) 100%);color:#fff;padding:46px 24px 38px;}
+  .hero-inner{max-width:1120px;margin:0 auto;}
+  .hero .badge{display:inline-block;background:var(--yellow);color:var(--ink);font-weight:700;font-size:12.5px;padding:3px 12px;border-radius:999px;margin-bottom:14px;}
+  .hero h1{font-size:31px;letter-spacing:.5px;}
+  .hero p.sub{margin-top:10px;font-size:15px;opacity:.93;max-width:800px;}
+  .hero .meta{margin-top:16px;font-size:12.5px;opacity:.85;display:flex;gap:20px;flex-wrap:wrap;}
+  .wrap{max-width:1120px;margin:0 auto;padding:34px 24px 80px;display:flex;gap:34px;align-items:flex-start;}
+  nav.toc{width:216px;flex-shrink:0;position:sticky;top:20px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 0;max-height:calc(100vh - 40px);overflow:auto;}
+  nav.toc a{display:block;padding:6px 18px;color:var(--ink-2);font-size:12.5px;text-decoration:none;border-left:3px solid transparent;}
+  nav.toc a:hover{color:var(--red);border-left-color:var(--yellow);background:var(--yellow-soft);}
+  nav.toc .grp{font-size:11px;font-weight:800;color:var(--ink-3);letter-spacing:1px;padding:12px 18px 4px;}
+  main{flex:1;min-width:0;}
+  section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:28px 30px;margin-bottom:24px;}
+  h2{font-size:20.5px;display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:11px;border-bottom:2px solid var(--yellow);}
+  h2 .no{font-size:11.5px;font-weight:700;color:#fff;background:var(--red);border-radius:6px;padding:2px 8px;letter-spacing:.5px;flex-shrink:0;font-family:Consolas,monospace;}
+  h3{font-size:15.5px;margin:22px 0 9px;color:var(--red-dark);}
+  h4{font-size:13.5px;margin:16px 0 6px;color:var(--ink);}
+  p{margin:8px 0;font-size:14px;}
+  ul,ol{margin:8px 0 8px 22px;font-size:14px;}
+  li{margin:4px 0;}
+  table{width:100%;border-collapse:collapse;margin:13px 0;font-size:12.8px;}
+  th{background:var(--yellow-soft);text-align:left;padding:8px 11px;border:1px solid var(--line);white-space:nowrap;font-size:12.5px;}
+  td{padding:8px 11px;border:1px solid var(--line);vertical-align:top;}
+  tr:nth-child(even) td{background:#FDFBF6;}
+  code{background:var(--yellow-soft);padding:1px 5px;border-radius:4px;font-size:12.2px;font-family:Consolas,Menlo,monospace;color:var(--red-dark);}
+  pre{background:#2B2118;color:#F2E9DC;padding:14px 16px;border-radius:10px;overflow-x:auto;font-size:12.2px;line-height:1.7;margin:12px 0;font-family:Consolas,Menlo,monospace;}
+  pre .c{color:#9A8B7A;}
+  pre .k{color:#FFC72C;}
+  pre .s{color:#8FD3A8;}
+  pre b{color:#FF9B8F;}
+  /* ============ 框图（mermaid 风格流程图） ============ */
+  .mm{--mm-line:#D3C3AC;--mm-gap:18px;margin:18px 0 6px;font-size:12.8px;line-height:1.6;}
+  .mm-node{background:#fff;border:1.5px solid #DCCDB6;border-radius:12px;padding:9px 14px;position:relative;box-shadow:0 1px 2px rgba(43,33,24,.05);}
+  .mm-node .mm-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .mm-node .mm-head b{font-size:13.5px;color:var(--red-dark);letter-spacing:.2px;}
+  .mm-node .mm-file{margin-left:auto;font-family:Consolas,monospace;font-size:10.5px;color:var(--ink-3);white-space:nowrap;}
+  .mm-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px;}
+  .mm-chips>span{background:#FDFBF6;border:1px solid var(--line);border-radius:6px;padding:1px 8px;font-size:11.8px;color:var(--ink-2);}
+  .mm-chips>span.err{background:#FDF0EE;border-color:#F0C4BE;color:var(--red-dark);}
+  .mm-chips>span.ok{background:var(--green-soft);border-color:#B7DCC7;color:var(--green);}
+  .mm-chips>span.hi{background:var(--yellow-soft);border-color:#EFD9A0;color:#8A6A00;}
+  /* 节点变体 */
+  .mm-node.stage-node{border-left:4px solid var(--yellow);}
+  .mm-node.plain{border-left:4px solid #E6DCCB;}
+  .mm-node.plain .mm-head b{color:var(--ink);}
+  .mm-node.io{background:var(--ink);border-color:var(--ink);}
+  .mm-node.io .mm-head b{color:var(--yellow);}
+  .mm-node.io .mm-file{color:#9A8B7A;}
+  .mm-node.io .mm-chips>span{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18);color:#E8DCC8;}
+  .mm-node.exit{background:var(--green-soft);border-color:#B7DCC7;border-left:4px solid var(--green);}
+  .mm-node.exit .mm-head b{color:var(--green);}
+  .mm-node.exit .mm-chips>span{background:rgba(30,123,79,.07);border-color:#B7DCC7;color:#17603E;}
+  /* 竖向箭头 */
+  .mm-arrow{height:22px;position:relative;display:flex;justify-content:center;}
+  .mm-arrow::before{content:'';width:2px;height:100%;background:var(--mm-line);}
+  .mm-arrow::after{content:'';position:absolute;bottom:-3px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5.5px solid transparent;border-right:5.5px solid transparent;border-top:8px solid var(--mm-line);}
+  /* 分叉：上方分叉线 + 每个分支的短竖线 */
+  .mm-fork{height:24px;position:relative;}
+  .mm-fork::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:2px;height:12px;background:var(--mm-line);}
+  .mm-fork::after{content:'';position:absolute;bottom:0;height:2px;background:var(--mm-line);left:calc((100% - 14px)/4);right:calc((100% - 14px)/4);}
+  .mm-fork.n3::after{left:calc((100% - 28px)/6);right:calc((100% - 28px)/6);}
+  .mm-split{display:grid;gap:14px;align-items:start;}
+  .mm-split.n2{grid-template-columns:1fr 1fr;}
+  .mm-split.n3{grid-template-columns:repeat(3,1fr);}
+  .mm-split>div{position:relative;padding-top:15px;}
+  .mm-split>div::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:2px;height:15px;background:var(--mm-line);}
+  /* 汇合：横线 + 向下短竖线（接后续箭头） */
+  .mm-join{height:22px;position:relative;}
+  .mm-join::before{content:'';position:absolute;top:0;height:2px;background:var(--mm-line);left:calc((100% - 14px)/4);right:calc((100% - 14px)/4);}
+  .mm-join.n3::before{left:calc((100% - 28px)/6);right:calc((100% - 28px)/6);}
+  .mm-join::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:2px;height:14px;background:var(--mm-line);}
+  .mm-note{font-size:11.6px;color:var(--ink-3);margin:8px 0 0;text-align:center;}
+  @media (max-width:760px){
+    .mm-split.n2,.mm-split.n3{grid-template-columns:1fr;}
+    .mm-fork,.mm-join{display:none;}
+    .mm-split>div{padding-top:0;}
+    .mm-split>div::before{display:none;}
+  }
+  .callout{border-left:4px solid var(--yellow);background:var(--yellow-soft);border-radius:0 10px 10px 0;padding:12px 16px;margin:13px 0;font-size:13.2px;}
+  .callout.red{border-left-color:var(--red);background:#FDF0EE;}
+  .callout.blue{border-left-color:var(--blue);background:var(--blue-soft);}
+  .callout.green{border-left-color:var(--green);background:var(--green-soft);}
+  .callout b{color:var(--red-dark);}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+  .mini{background:#FDFBF6;border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:12.8px;}
+  .mini h4{font-size:13px;color:var(--red-dark);margin:0 0 5px;}
+  .mini p{margin:3px 0;font-size:12.6px;}
+  .tag{display:inline-block;font-size:11px;font-weight:700;border-radius:5px;padding:1px 7px;margin-right:5px;vertical-align:1px;}
+  .tag.real{background:#E8F5EE;color:var(--green);}
+  .tag.contract{background:#EEF4FB;color:var(--blue);}
+  .tag.gap{background:#FDE8E6;color:var(--red);}
+  .tag.rule{background:var(--yellow-soft);color:#8A6A00;}
+  .tag.new{background:#F0EBFA;color:var(--purple);}
+  /* 流水线图 */
+  .pipe{display:flex;flex-direction:column;gap:0;margin:16px 0;}
+  .pipe-step{display:flex;gap:14px;align-items:flex-start;position:relative;padding-bottom:18px;}
+  .pipe-step:last-child{padding-bottom:0;}
+  .pipe-step::before{content:'';position:absolute;left:19px;top:40px;bottom:0;width:2px;background:var(--line);}
+  .pipe-step:last-child::before{display:none;}
+  .ps-no{width:40px;height:40px;flex-shrink:0;border-radius:50%;background:var(--yellow);color:var(--red-dark);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;border:2px solid var(--red);z-index:1;}
+  .ps-body{flex:1;min-width:0;background:#FDFBF6;border:1px solid var(--line);border-radius:10px;padding:11px 14px;}
+  .ps-body b{display:block;font-size:14px;color:var(--red-dark);}
+  .ps-body .where{font-family:Consolas,monospace;font-size:11.5px;color:var(--ink-3);margin-top:2px;}
+  .ps-body p{margin:5px 0 0;font-size:12.8px;color:var(--ink-2);}
+  .ok{color:var(--green);font-weight:700;}
+  .no-g{color:var(--red);font-weight:700;}
+  .stg{display:inline-block;font-family:Consolas,monospace;font-size:11px;font-weight:700;background:var(--ink);color:var(--yellow);border-radius:4px;padding:1px 6px;}
+  footer{max-width:1120px;margin:0 auto;padding:0 24px 60px;color:var(--ink-2);font-size:12.5px;}
+  @media (max-width:900px){
+    .wrap{flex-direction:column;align-items:stretch;}
+    main{width:100%;min-width:0;}
+    nav.toc{position:static;width:100%;max-height:none;}
+    .grid2,.grid3{grid-template-columns:1fr;}
+  }
+  @media (max-width:760px){
+    .hero{padding:34px 18px 28px;}
+    .hero h1{font-size:24px;}
+    .hero p.sub{font-size:13.5px;}
+    .wrap{padding:22px 14px 50px;gap:20px;}
+    section{padding:20px 15px;}
+    h2{font-size:18px;}
+    table{font-size:12px;}
+    th{white-space:normal;}
+    th,td{padding:7px 8px;overflow-wrap:anywhere;}
+    td code,th code{word-break:break-all;}
+    .mm-node .mm-file{white-space:normal;margin-left:0;}
+    .ps-body{flex-direction:column;gap:6px;}
+  }
+  @media print{ nav.toc{display:none;} section{border:none;page-break-inside:avoid;} }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-inner">
+    <span class="badge">代码实证 · 逐行对照 server/src 与 web/src</span>
+    <h1>实际点餐 Agent Loop</h1>
+    <p class="sub">当前仓库真正跑起来的那条链路：一句用户输入 → 7 个 stage → 麦当劳 MCP 真实数据 → 确定性选品 → 一道算术体检 + 一道模型复核 → LLM 只写文案 → SSE 回推 → 可编辑购物车 → 建单 → 支付卡与状态轮询。本文只写"代码怎么做的"，不写"设计想怎么做"；两者不一致处单列第 16 节。</p>
+    <div class="meta">
+      <span>整理时间 2026-10-25 13:40</span>
+      <span>代码基线 server/src（约 13.0k 行）+ web/src</span>
+      <span>单测 311 通过 / 57 套件</span>
+      <span>服务端口 3000 · 单进程 · SQLite</span>
+      <span>LLM deepseek-v4-1-flash（OpenAI 兼容）</span>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+<nav class="toc">
+  <div class="grp">总览</div>
+  <a href="#s1">1. Loop 全景与 9 个关键判定</a>
+  <a href="#s2">2. 入口：POST /api/chat 与 SSE</a>
+  <div class="grp">七个 stage</div>
+  <a href="#s3">3. ① intent：LLM 主导的意图解析</a>
+  <a href="#s4">4. ①.5 购物车直改</a>
+  <a href="#s5">5. ①.6 context：模糊意图旁路</a>
+  <a href="#s6">6. ② 知识匹配（静默，不占 stage）</a>
+  <a href="#s7">7. ② menu：MCP 现实校准</a>
+  <a href="#s8">8. 选品引擎（确定性核心）</a>
+  <a href="#s9">9. ③ review：两道复核</a>
+  <a href="#s10">10. ④ coupon：定价与预算收敛</a>
+  <a href="#s11">11. ⑤ compose：LLM 边界</a>
+  <a href="#s12">12. ⑥ 落盘与购物车同步</a>
+  <div class="grp">闭环</div>
+  <a href="#s13">13. 下单：两条结算路径</a>
+  <a href="#s14">14. 支付卡与状态轮询</a>
+  <div class="grp">核查</div>
+  <a href="#s15">15. 三人餐错误复盘（真实案例）</a>
+  <a href="#s16">16. 实现 vs 契约：11 个不一致</a>
+  <a href="#s17">17. 错误分支总表</a>
+  <a href="#s18">18. 参数与阈值速查</a>
+</nav>
+
+<main>
+
+<!-- ================= 1 ================= -->
+<section id="s1">
+  <h2><span class="no">01</span>Loop 全景与 9 个关键判定</h2>
+
+  <p>整条链路是<b>一次请求一条流水线</b>（不是自由 ReAct 循环）：每个用户输入都会新建一个 <code>chatId</code>，独立跑完七个 stage，最后落一条 <code>chats</code> 记录供下单取快照。跨轮次的"连续对话"由三样东西承担：<b>长期记忆</b>、<b>购物车</b>（上一轮的结果 + 用户的编辑痕迹）、<b>最近一条 chat 的 <code>reply_json</code></b>。</p>
+
+  <div class="mm">
+
+    <div class="mm-node io">
+      <div class="mm-head"><b>用户输入</b><span class="mm-file">一句话</span></div>
+    </div>
+    <div class="mm-arrow"></div>
+
+    <div class="mm-node plain">
+      <div class="mm-head"><b>前端 ChatView.send()</b><span class="mm-file">POST /api/chat</span></div>
+      <div class="mm-chips">
+        <span>{ message, fulfillment, addressId?, guest? }</span>
+        <span>EventSource 逐帧接收</span>
+      </div>
+    </div>
+
+    <div class="mm-fork n3"></div>
+    <div class="mm-split n3">
+      <div><div class="mm-node plain" style="height:100%"><div class="mm-head"><b>参数校验</b></div><div class="mm-chips"><span>zod safeParse</span><span class="err">失败 400 · 不开 SSE</span></div></div></div>
+      <div><div class="mm-node plain" style="height:100%"><div class="mm-head"><b>限流</b></div><div class="mm-chips"><span>/api 30/min</span><span>/api/chat 10/min</span><span>访客 1 次/日</span></div></div></div>
+      <div><div class="mm-node plain" style="height:100%"><div class="mm-head"><b>开流</b></div><div class="mm-chips"><span>X-Accel-Buffering:no</span><span>心跳 15s</span></div></div></div>
+    </div>
+    <div class="mm-join n3"></div>
+    <div class="mm-arrow"></div>
+
+    <div class="mm-node io">
+      <div class="mm-head"><b>runChat()</b><span class="mm-file">AsyncGenerator&lt;SseEvent&gt;</span></div>
+      <div class="mm-chips"><span>一次请求一条流水线</span><span>不是自由 ReAct 循环</span></div>
+    </div>
+    <div class="mm-arrow"></div>
+
+    <div class="mm-node plain">
+      <div class="mm-head"><b>⓪ 身份 / 记忆</b><span class="mm-file">静默 · 不占 stage</span></div>
+      <div class="mm-chips">
+        <span>访客 → InMemoryStore（不落盘 · 不写 chats）</span>
+        <span>登录 → memory.snapshot() 读快照</span>
+      </div>
+    </div>
+    <div class="mm-arrow"></div>
+
+    <div class="mm-node stage-node">
+      <div class="mm-head"><b>① 意图解析</b><span class="mm-file">stage: intent</span></div>
+      <div class="mm-chips">
+        <span class="hi">parseIntentWithLlm() — 模型出结构化意图 + 自己判 clarity</span>
+        <span>parseIntent() — 规则同步跑，只做约束兜底</span>
+      </div>
+    </div>
+    <div class="mm-arrow"></div>
+
+    <div class="mm-node plain">
+      <div class="mm-head"><b>①.5 购物车直改</b><span class="mm-file">parseCartIntent()</span></div>
+      <div class="mm-chips">
+        <span>「薯条删掉」「可乐来两杯」「换成麦乐鸡」</span>
+        <span class="ok">命中 → 改车 → reply + done（不进选品 · 不换整单）</span>
+      </div>
+    </div>
+    <div class="mm-arrow"></div>
+
+    <div class="mm-node plain">
+      <div class="mm-head"><b>② 知识匹配</b><span class="mm-file">静默 · 不占 stage</span></div>
+      <div class="mm-chips">
+        <span>composeStrategy() — 节气 / 星座 / 水逆 / 时段 / 情绪策略</span>
+        <span class="hi">记忆忌口让位当轮口味（过敏源永不让）</span>
+      </div>
+    </div>
+    <div class="mm-arrow"></div>
+
+    <div class="mm-node stage-node">
+      <div class="mm-head"><b>①.6 旁路判断</b><span class="mm-file">stage: context · 仅 clarity=vague</span></div>
+      <div class="mm-chips">
+        <span>analyzeContext() — 用户记忆 + 当下时间</span>
+        <span>产出：方向标签 / 推定人数 / 软预算 / 该避开的</span>
+        <span class="err">旁路也空手 + 上一轮没问过 → renderClarify() → reply + done</span>
+      </div>
+    </div>
+    <div class="mm-arrow"></div>
+
+    <div class="mm-node stage-node">
+      <div class="mm-head"><b>② 现实校准</b><span class="mm-file">stage: menu · 45s 超时</span></div>
+      <div class="mm-chips">
+        <span class="err">无登录 → NEED_LOGIN（不编菜单）</span>
+        <span class="err">外送无地址 → NEED_ADDRESS</span>
+        <span>到店 → query-nearby-stores(城市 + 关键词)</span>
+        <span>外送 → delivery-query-stores(只认 addressId)</span>
+        <span>query-meals + available-coupons + list-nutrition-foods</span>
+      </div>
+    </div>
+    <div class="mm-arrow"></div>
+
+    <div class="mm-node plain">
+      <div class="mm-head"><b>选品</b><span class="mm-file">无 LLM · 确定性</span></div>
+      <div class="mm-chips">
+        <span>readCartQuietly() + detectUserRemovals()</span>
+        <span class="hi">selectProducts() — 人数分档 → 整餐优先 → 补主食 → 补配角</span>
+        <span>buildMenuItems() — 定份数、定小计</span>
+      </div>
+    </div>
+    <div class="mm-arrow"></div>
+
+    <div class="mm-node stage-node">
+      <div class="mm-head"><b>③ 复核</b><span class="mm-file">stage: review</span></div>
+      <div class="mm-chips">
+        <span class="hi">structuralCheck() — 纯算术，命中就跳过模型</span>
+        <span>reviewMenu() — 模型判 keep / prune / rebuild</span>
+        <span>prune → 本地减法（只删不加）</span>
+        <span>rebuild → 带 avoidNames 重跑选品</span>
+      </div>
+    </div>
+    <div class="mm-arrow"></div>
+
+    <div class="mm-node stage-node">
+      <div class="mm-head"><b>④ 算价</b><span class="mm-file">stage: coupon · 有券才发</span></div>
+      <div class="mm-chips">
+        <span>到店：商品价合计</span>
+        <span>外送：calculate-price（含配送 / 打包）</span>
+        <span>超预算 → 扣掉实收费用 → 第二次选品（最多 1 次）</span>
+      </div>
+    </div>
+    <div class="mm-arrow"></div>
+
+    <div class="mm-node stage-node">
+      <div class="mm-head"><b>⑤ 文案</b><span class="mm-file">stage: compose · LLM 唯一边界</span></div>
+      <div class="mm-chips">
+        <span class="hi">LLM 只写 {hook, quote}</span>
+        <span>失败 → pickFallback() 模板兜底</span>
+        <span>renderReply() 拼事实壳（数字全部来自本进程计算）</span>
+      </div>
+    </div>
+    <div class="mm-arrow"></div>
+
+    <div class="mm-node plain">
+      <div class="mm-head"><b>⑥ 落盘</b><span class="mm-file">失败一律忽略</span></div>
+      <div class="mm-chips">
+        <span>chats 表 — fulfillment / address / storeCode / beCode / menu_hash</span>
+        <span class="hi">购物车 — 整单替换（replaceFromMenu）</span>
+        <span>情绪日记 + 仪式状态 + 忌口沉淀</span>
+      </div>
+    </div>
+    <div class="mm-arrow"></div>
+
+    <div class="mm-node plain">
+      <div class="mm-head"><b>前端：右侧购物车可编辑</b><span class="mm-file">菜单不再是只读卡片</span></div>
+    </div>
+
+    <div class="mm-fork n2"></div>
+    <div class="mm-split n2">
+      <div><div class="mm-node plain" style="height:100%"><div class="mm-head"><b>confirm-cart</b><span class="mm-file">POST /api/orders</span></div><div class="mm-chips"><span>按购物车当前状态结算</span><span class="hi">用户手动删过一项也按删后算钱</span></div></div></div>
+      <div><div class="mm-node plain" style="height:100%"><div class="mm-head"><b>confirm {chatId}</b><span class="mm-file">POST /api/orders</span></div><div class="mm-chips"><span>按对话快照结算</span><span>用户看到什么就买什么</span></div></div></div>
+    </div>
+    <div class="mm-join n2"></div>
+    <div class="mm-arrow"></div>
+
+    <div class="mm-node plain">
+      <div class="mm-head"><b>六道校验 → 建单</b><span class="mm-file">order.service.ts</span></div>
+      <div class="mm-chips">
+        <span>归属 / 幂等 / 快照哈希 / 履约一致 / 价格复核 / create-order</span>
+        <span class="err">价格差 &gt; ¥1 → 409 让用户重看</span>
+        <span>只透出 payUrl，无任何支付调用</span>
+      </div>
+    </div>
+    <div class="mm-arrow"></div>
+
+    <div class="mm-node exit">
+      <div class="mm-head"><b>支付卡 + 状态轮询</b><span class="mm-file">GET /api/orders/:id</span></div>
+      <div class="mm-chips">
+        <span>前 30s 每 3s，之后每 10s</span>
+        <span>上限 5min · 终态即停</span>
+        <span class="ok">"付款由你完成，我只负责下单"</span>
+      </div>
+    </div>
+
+    <p class="mm-note">七个 stage 里 <code>intent / menu / review / compose</code> 必发；<code>context</code> 仅模糊意图；<code>coupon</code> 仅拉到券；<code>knowledge</code> 从不发（静默跑）。</p>
+  </div>
+
+  <h3>这条 loop 的 9 个"硬判定"，决定了它不会胡说</h3>
+  <table>
+    <tr><th style="width:44px">#</th><th style="width:200px">判定</th><th>实际做法</th><th style="width:150px">位置</th></tr>
+    <tr><td>1</td><td>「这句话够不够清楚」谁说了算</td><td><b>模型</b>。规则不再用"有没有 people/budget/taboo"推清晰度 —— 旧逻辑会把「今天好烦」判成清楚、把「帮我点个午餐」判成模糊。规则只在模型挂了时兜底</td><td><code>llm-intent.service.ts:321</code></td></tr>
+    <tr><td>2</td><td>模糊要不要反问</td><td>不反问，<b>走旁路替你想</b>。只有"旁路也空手 + 上一轮没问过 + 非安全模式"才问一次，且<b>禁止连问两次</b></td><td><code>orchestrator.ts:284</code></td></tr>
+    <tr><td>3</td><td>说，还是选</td><td>选品、份数、报价<b>全部</b>是确定性代码；LLM 的输出被限制成 <code>{hook, quote}</code> 两个字符串，拿不到菜单写权限</td><td><code>prompts/system.ts:72</code></td></tr>
+    <tr><td>4</td><td>拿不到数据怎么办</td><td>直接报错。<b>离线兜底菜单已移除</b>，宁可说"没拿到"，不编一份像真的菜单</td><td><code>orchestrator.ts:305</code></td></tr>
+    <tr><td>5</td><td>外送能不能沿用自取菜单</td><td>不能。两套商品编码（实测同店 90 个到店品里 77 个外送不存在），必须按 <code>orderType=2</code> 重查</td><td><code>delivery.service.ts</code></td></tr>
+    <tr><td>6</td><td>预算按单价还是按小计</td><td>按「单价 × 份数」小计。<code>qtyOf()</code> 被选品与渲染共用，避免"选 150 出 546"</td><td><code>selector.service.ts:449</code></td></tr>
+    <tr><td>7</td><td>人数档位算不算算术</td><td>算。<code>servesOf()</code> 是硬编码档位，"一份够几人"这种<b>算术</b>不交给概率模型 —— 见第 15 节的三人餐事故</td><td><code>selector.service.ts:404</code></td></tr>
+    <tr><td>8</td><td>钱信谁</td><td>不信 LLM、不信前端。到店重算、外送以 <code>calculate-price</code> 为准，差异 &gt; 1 元就报冲突</td><td><code>order.service.ts:246</code></td></tr>
+    <tr><td>9</td><td>能不能代付</td><td>不能。只透传 <code>payUrl</code>，代码里没有任何支付调用路径</td><td><code>order.service.ts</code></td></tr>
+  </table>
+
+  <div class="callout blue">
+    <b>注意 loop 的边界：</b>它没有「工具循环」。LLM 不选工具、不决定调几次 MCP —— MCP 调用顺序是写死的 if/else。所谓 "agent" 体现在<b>规则 + 知识 + 真实数据 + 一层模型判断</b>合成一个回复，而不是模型自主编排。模型只在两个位置做"判断"：<code>clarity</code>（够不够清楚）和 <code>review</code>（这单配得像不像人点的）；两处都<b>没有</b>选品权。
+  </div>
+</section>
+
+<!-- ================= 2 ================= -->
+<section id="s2">
+  <h2><span class="no">02</span>入口：POST /api/chat 与 SSE</h2>
+
+  <h3>请求契约</h3>
+  <table>
+    <tr><th>字段</th><th>类型</th><th>约束</th><th>说明</th></tr>
+    <tr><td><code>message</code></td><td>string</td><td>1–1000 字</td><td>用户原话，唯一的语义输入</td></tr>
+    <tr><td><code>fulfillment</code></td><td>enum</td><td>自取 / 外送 / 堂食，可选</td><td>前端开局就选；不传默认「自取」</td></tr>
+    <tr><td><code>addressId</code></td><td>string</td><td>外送时必带</td><td>来自 <code>delivery-query-addresses</code></td></tr>
+    <tr><td><code>guest</code></td><td>boolean</td><td>可选</td><td>true 或没有 JWT 都按访客处理</td></tr>
+  </table>
+
+  <div class="callout">
+    <b>履约方式以「前端显式选择」为准。</b><code>fulfillment = input.fulfillment ?? intent.explicit.fulfillment ?? '自取'</code>（<code>orchestrator.ts:126</code>）。用户开局选了外送，哪怕话里说"我自己去拿"，仍按外送走 —— 因为右侧菜单的商品编码已经按外送查过了。<b>中途不能改履约方式</b>，改就必须重新问一次（下单时会 409 拦住）。
+  </div>
+
+  <h3>进入流水线之前的三道闸</h3>
+  <div class="grid3">
+    <div class="mini"><h4>① 参数校验</h4><p>zod <code>safeParse</code>，失败直接 400，<b>不开 SSE</b>。</p></div>
+    <div class="mini"><h4>② 限流</h4><p><code>/api</code> 30 次/分（scope=api）；<code>/api/chat</code> 10 次/分。超限 429 + <code>Retry-After</code>。</p></div>
+    <div class="mini"><h4>③ 访客额度</h4><p>SQLite <code>guest_usage</code> 计数，每 IP 每天 1 次；计数故障时<b>放行</b>，不挡用户。</p></div>
+  </div>
+
+  <h3>SSE 实现要点（全是踩过的坑）</h3>
+  <pre><span class="c">// routes/chat.ts</span>
+res.setHeader(<span class="s">'Content-Type'</span>, <span class="s">'text/event-stream; charset=utf-8'</span>);
+res.setHeader(<span class="s">'Cache-Control'</span>, <span class="s">'no-cache, no-transform'</span>);
+res.setHeader(<span class="s">'X-Accel-Buffering'</span>, <span class="s">'no'</span>);   <span class="c">// 关键：禁止 Nginx 缓冲，否则前端一个字都收不到</span>
+res.flushHeaders?.();
+
+<span class="c">// 断连必须挂 res 而不是 req：
+// Node 22 / Express 5 里 req 的 'close' 在 body 读完时就会触发（实测 0ms），
+// 用它当断连信号 → 一个事件都发不出去，且 finally 跳过 res.end() → 连接挂死。</span>
+res.on(<span class="s">'close'</span>, () =&gt; { closed = <span class="k">true</span>; ctrl.abort(); });
+
+setInterval(() =&gt; { <span class="k">if</span> (!closed) res.write(<span class="s">': ping\n\n'</span>); }, <span class="k">15_000</span>).unref?.();</pre>
+
+  <h3>事件类型（契约 5 种）</h3>
+  <table>
+    <tr><th>event</th><th>data</th><th>实际会不会发</th><th>前端行为</th></tr>
+    <tr><td><code>stage</code></td><td><code>{stage, text}</code></td><td class="ok">会，最多 6 次</td><td>替换进度文案（<code>stageText</code>），每 stage 有 3 条文案随机选</td></tr>
+    <tr><td><code>delta</code></td><td><code>{text}</code></td><td class="no-g">从不发送<span class="tag gap">GAP</span></td><td>逐字打字机（<code>typeInto</code> 已写好，因此永远不触发）</td></tr>
+    <tr><td><code>reply</code></td><td>完整 <code>ChatReply</code></td><td class="ok">会，一次</td><td>渲染 hook / 菜单 / 合计 / 金句 / 按钮；有菜单则自动打开右侧购物车</td></tr>
+    <tr><td><code>done</code></td><td><code>{chatId}</code></td><td class="ok">会</td><td>存 <code>lastChatId</code>，供 confirm 用</td></tr>
+    <tr><td><code>error</code></td><td><code>{error, message}</code></td><td class="ok">按分支</td><td>流内错误气泡，按错误码给不同按钮</td></tr>
+  </table>
+
+  <h3>七个 stage 的真实出现顺序</h3>
+  <table>
+    <tr><th style="width:96px">stage</th><th style="width:78px">必发？</th><th>触发条件</th><th>文案样例</th></tr>
+    <tr><td><code>intent</code></td><td class="ok">必发</td><td>进来第一件事，<b>在身份检查之前</b></td><td>让我想想你想吃什么…</td></tr>
+    <tr><td><code>context</code></td><td>条件</td><td><code>clarity === 'vague'</code> 且非安全模式</td><td>想了想你今天的状态和现在几点…</td></tr>
+    <tr><td><code>menu</code></td><td class="ok">必发</td><td>反问分支之后、MCP 取数之前</td><td>正在替你看菜单…</td></tr>
+    <tr><td><code>review</code></td><td class="ok">必发</td><td>选品出菜单之后、算价之前</td><td>回头看一眼这单配得对不对…</td></tr>
+    <tr><td><code>coupon</code></td><td>条件</td><td><code>coupons.length &gt; 0</code>，即拉到券才发</td><td>顺便翻了翻你的优惠券…</td></tr>
+    <tr><td><code>compose</code></td><td class="ok">必发</td><td>算价完成之后</td><td>给你写点人话…</td></tr>
+    <tr><td><code>knowledge</code></td><td class="no-g">从不</td><td>类型和文案都有，<code>runChat</code> 里没有这一行<span class="tag gap">GAP</span></td><td>（知识层是静默的，不占 stage）</td></tr>
+  </table>
+
+  <div class="callout red">
+    <b>一次真实请求的帧序列</b>（到店 + 有券 + 模糊意图）：<br>
+    <code>stage</code> intent → <code>stage</code> context → <code>stage</code> menu → <code>stage</code> review → <code>stage</code> coupon → <code>stage</code> compose → <code>reply</code> → <code>done</code>。<br>
+    意图明确时少 <code>context</code>；没券时少 <code>coupon</code>。期间每 15 秒插一条 <code>: ping</code>；客户端中途关页面会 abort 整条流水线，不再继续烧 MCP 额度。
+  </div>
+</section>
+
+<!-- ================= 3 ================= -->
+<section id="s3">
+  <h2><span class="no">03</span>① intent：LLM 主导的意图解析</h2>
+  <p><span class="tag new">架构变更</span><span class="tag contract">LLM 决策</span><code>llm-intent.service.ts:221 parseIntentWithLlm()</code> —— 模型出结构化意图，<b><code>clarity</code> 由模型判定</b>；规则解析同步跑一遍，只做"约束抽取 + 安全网"。</p>
+
+  <div class="callout red">
+    <b>为什么要把决策权从规则搬给模型：</b>旧版靠"有没有 people/budget/taboo/taste"推清晰度，两头都判错 ——<br>
+    ① 「今天好烦」因为有"今天"这个时间词被判成<b>清楚</b>，直接硬选品，一句话被当成点餐指令；<br>
+    ② 「帮我点个午餐」因为什么约束都没有被判成<b>模糊</b>，反过来被问一句"想吃带劲的还是舒服的"。<br>
+    根子是同一个：<b>规则无法判断"光靠这句话能不能在菜单上挑出东西"</b>。这句话判断标准只有一条，交给模型反而更准。
+  </div>
+
+  <h3>模型抽什么、规则补什么</h3>
+  <table>
+    <tr><th style="width:100px">字段</th><th style="width:110px">谁说了算</th><th>合并规则（<code>mergeIntent</code>）</th></tr>
+    <tr><td><code>clarity</code></td><td class="ok"><b>模型</b></td><td>模型给 <code>clear</code>/<code>vague</code> 直接采信；给了非法值才退回规则。<b>但有一条硬覆盖</b>：只要忌口/预算/人数任一存在，强制 <code>clear</code>（<code>:335</code>）</td></tr>
+    <tr><td><code>mood</code></td><td class="ok"><b>模型</b></td><td>模型值合法就采信，否则用规则的；命中后 <code>moodConfidence = 0.85</code></td></tr>
+    <tr><td><code>orderIntent</code></td><td>或运算</td><td>模型或规则任一为 true 即 true</td></tr>
+    <tr><td><code>taboo</code></td><td class="no-g"><b>并集 + 校验</b></td><td>规则 + 模型取并集；<b>模型新提的忌口必须在原文里找得到否定词搭配</b>（不吃/过敏/忌口/别放…），否则丢弃。这条是防"模型把『想吃辣』写成不吃辣"，那会把整个辣味菜单全过滤掉</td></tr>
+    <tr><td><code>taste</code></td><td>并集</td><td>取并集后<b>剔除已进硬忌口的</b>，避免同一词既是偏好又是禁忌</td></tr>
+    <tr><td><code>people</code>/<code>budget</code></td><td>模型优先</td><td>模型给了取模型的（1–30 人 / 1–10000 元），没给用规则的（中文数字规则比模型稳）。<b>模型被明确要求"没说就填 null，不要猜"</b></td></tr>
+    <tr><td><code>safetyMode</code></td><td class="no-g">或运算</td><td>任一方命中即开，开则禁一切节气/星座/水逆话术</td></tr>
+    <tr><td><code>needsClarify</code></td><td>恒 false</td><td>新架构下模糊 ≠ 要反问，模糊走旁路。这个字段实际已退役（见 16 节 #8）</td></tr>
+  </table>
+
+  <h3>为什么规则不能退休</h3>
+  <div class="grid3">
+    <div class="mini"><h4>安全</h4><p>忌口/过敏是硬约束，漏一个就是吃出问题，不能赌模型每次抽到。规则必须能捞回来。</p></div>
+    <div class="mini"><h4>可复现</h4><p>中文数字（「仨」「两位」）、预算十几种说法，正则可单测、零成本、结果稳定。</p></div>
+    <div class="mini"><h4>降级</h4><p>模型超时 9s / 挂了 / 返回乱码 → <code>{...rule, clarity: ruleVagueToClarity(rule)}</code>，用户照样能点餐</p></div>
+  </div>
+
+  <h3>反问了怎么办：禁止连问两次</h3>
+  <pre><span class="c">// orchestrator.ts:277-297</span>
+askedBefore      = lastTurnWasClarify(userId, guest)   <span class="c">// 读最近一条 chats 的 clarifyOnly</span>
+sideChannelEmpty = taste 空 &amp;&amp; mood 为 null &amp;&amp; people 未定 &amp;&amp; budget 未定
+
+<span class="k">if</span> (clarity === 'vague' &amp;&amp; sideChannelEmpty &amp;&amp; !askedBefore &amp;&amp; !safetyMode) {
+  question = pickClarifyBySlot(timeSlot)   <span class="c">// 按时段给不同选项，不是固定一句</span>
+  → renderClarify() → reply + done         <span class="c">// 不查 MCP、不选品</span>
+}</pre>
+
+  <p>为什么要从规则上禁止连问：反问文案是固定的，用户很可能照原样复读甚至抄一遍；只要解析层漏认其中任一个词就会再问一次，用户被困在一个出不去的问题里。<b>与其指望"用户说的每个词都能认"，不如禁止发生第二次。</b></p>
+
+  <p>反问文案按时段走（<code>pickClarifyBySlot</code>，<code>orchestrator.ts:1201</code>），保证用户照答的每一句都是解析层认得的词：</p>
+  <table>
+    <tr><th style="width:90px">时段</th><th>反问文案</th></tr>
+    <tr><td>早餐 5–10</td><td>早上想吃点热的垫一下，还是清淡好带走的？</td></tr>
+    <tr><td>午餐 10–14</td><td>想吃点辣的顶一顶，还是清爽点的？</td></tr>
+    <tr><td>下午茶 14–17</td><td>来点甜的配杯咖啡，还是咸的？</td></tr>
+    <tr><td>夜市 17–22</td><td>今晚想吃重口的解压，还是热乎清淡的？</td></tr>
+    <tr><td>深夜</td><td>这么晚了，想吃点热的暖一下，还是随便来点小食？</td></tr>
+  </table>
+</section>
+
+<!-- ================= 4 ================= -->
+<section id="s4">
+  <h2><span class="no">04</span>①.5 购物车直改</h2>
+  <p><span class="tag new">新增</span><span class="tag real">纯规则</span><code>cart-intent.service.ts:125 parseCartIntent()</code> + <code>orchestrator.ts:1299 tryHandleCartAction()</code></p>
+
+  <p>「薯条删掉」「可乐来两杯」「把汉堡换成麦乐鸡」这类话<b>不是</b>在重新点餐，而是在改右边那份已经在配的单。它必须在三个位置之前跑：</p>
+
+  <table>
+    <tr><th style="width:130px">必须在谁之前</th><th>不这样的后果</th></tr>
+    <tr><td>反问分支</td><td>这类句子通常很短、情绪很平，正好命中"太模糊"，于是用户说"删掉薯条"，系统回一句"你想吃带劲的还是舒服的"</td></tr>
+    <tr><td>选品</td><td>走选品会把整份菜单换掉。用户只想删一份薯条，结果一单被重配</td></tr>
+    <tr><td>旁路（context）</td><td>改车是确定性操作，让模型去分析"用户为什么想删薯条"纯属浪费一次调用，还会拖慢几百毫秒</td></tr>
+  </table>
+
+  <h3>识别顺序（不能调）</h3>
+  <pre>text 长度 &gt; 40 → <span class="k">none</span>（长句基本不是购物车指令，保守放行）
+
+<span class="k">clear</span>   ← 全部清空 / 都删了 / 清空购物车 / 全都不要 / 重新来一单 / 都不要了
+<span class="k">swap</span>    ← 把? (X) (换成|替换成|改成) (Y)
+<span class="k">remove</span>  ← 删 / 去掉 / 不要了 / 拿掉
+<span class="k">setQty</span>  ← 必须带明确动词：改成 / 改到 / 调成 / 变成 + 数字
+<span class="k">add</span>     ← 再加 / 再来 / 加个 / 来N杯 / 要N个 / 多要 / ^加</pre>
+
+  <div class="callout red">
+    <b>两处必须踩住的坑（都真踩过）：</b><br>
+    ① <b>「来两杯」必须归到 <code>add</code></b>，不能落到 <code>setQty</code>。早期漏了"动词+数量+单位"这条，用户说「可乐来两杯」被理解成"把某物改成 2 份"。<br>
+    ② <b><code>setQty</code> 必须有明确动词</b>。「两个人吃 100 块」里的"两"会被当成数量，于是正常点餐请求被误判成"把某物改成 2 份"，整单一换全乱。
+  </div>
+
+  <h3>五个分支的实际行为</h3>
+  <table>
+    <tr><th style="width:96px">kind</th><th>空车时</th><th>非空车时</th><th>找不到时的回复</th></tr>
+    <tr><td><code>clear</code></td><td>直接清（无意义但不报错）</td><td><code>clearCart()</code></td><td>—</td></tr>
+    <tr><td><code>remove</code></td><td class="no-g">回"你还没点东西呢"</td><td><code>findItemByName</code> → <code>removeItem</code></td><td>车里没有「X」。现在有：…。要删哪个直接说名字</td></tr>
+    <tr><td><code>setQty</code></td><td class="no-g">同上</td><td><code>updateItem({qty})</code></td><td>车里没有「X」。现在有：…</td></tr>
+    <tr><td><code>swap</code></td><td class="ok"><b>返回 null</b>（当点餐处理）</td><td><b>先删后加</b>，保留原份数与特制</td><td>菜单里搜不到「Y」，换个说法试试</td></tr>
+    <tr><td><code>add</code></td><td class="ok"><b>返回 null</b>（当点餐处理）</td><td><code>pickProduct</code> → <code>addItem({qty})</code></td><td>菜单里没找到「X」，换个说法试试</td></tr>
+  </table>
+
+  <div class="callout blue">
+    <b>三个细节值得单独说：</b><br>
+    ① <b>空车 + add/swap 要返回 null 而不是报错。</b>「来杯可乐」在空车语境下更像"给我配一单"，不该只加一杯可乐就结束。<br>
+    ② <b>swap 必须"先删后加"。</b>顺序反了会短暂多出一件；而且若加购失败还能保住原来那份。<br>
+    ③ <b>「改不动」也要回 ChatReply 而不是走选品。</b>用户说"把薯条删了"但车里没有薯条，如果走选品，他会收到一整份新菜单 —— 看起来像系统根本没听懂。老老实实回一句"车里没有薯条，现在有这些"才是对的。
+  </div>
+
+  <p><code>findItemByName</code> 用<b>包含</b>而不是相等：用户说「薯条」，车里叫「薯条（中）」；说「可乐」，车里叫「无糖可口可乐」—— 用户不会背全名。多条命中时取<b>最短名字</b>那条，保证同样说法每次命中同一项，确定性比"更聪明"重要。</p>
+</section>
+
+<!-- ================= 5 ================= -->
+<section id="s5">
+  <h2><span class="no">05</span>①.6 context：模糊意图旁路</h2>
+  <p><span class="tag new">新增</span><span class="tag contract">LLM 判断</span><span class="tag real">产结论不产菜单</span><code>llm-intent.service.ts:413 analyzeContext()</code></p>
+
+  <p>用户原话：「如果是模糊意图，比如说是很烦、今天心情不错，或者说给我点个午餐没有明确的，旁路根据用户知识（包括当下时间判断），判断结论导入主 loop。如果有明确意图，比如我要吃辣、3 个人 50 块这种，就不需要旁路，直接第二步。」</p>
+
+  <p>旁路的产物<b>不是菜单</b>，是一份判断结论：方向标签 + 推定人数 + 软预算 + 该避开的。由 <code>applyContextToIntent</code> 合并进 intent，再交给确定性选品引擎去真实菜单里落地。<b>这样"模糊"就不会变成"再问一遍用户"，而是变成"系统替你多想了想"。</b></p>
+
+  <h3>正向模型输入</h3>
+  <table>
+    <tr><th style="width:130px">输入块</th><th>内容</th></tr>
+    <tr><td>用户记忆</td><td>昵称 / 忌口（绝对避开）/ 口味标签 / 常点单品 / 特制习惯 / 历史预算区间 / 最近情绪 / 常去门店</td></tr>
+    <tr><td>当下时间</td><td>年月日 + 星期 + 时分 / 时段 / 节气（含意象）/ 水逆第几天</td></tr>
+    <tr><td>用户原话</td><td>原样贴进去</td></tr>
+  </table>
+
+  <h3>模型输出 → 怎么用</h3>
+  <table>
+    <tr><th style="width:110px">字段</th><th>合并规则（<code>applyContextToIntent</code>）</th></tr>
+    <tr><td><code>tasteHints</code></td><td><b>先规范化再并集</b>。模型爱输出「解压」「省事」「暖胃」这种语义标签，而 selector 的 <code>matchTasteTag</code> 只认固定词表，对不上会<b>静默失效</b>。所以过一遍 <code>TASTE_CANON</code>：解压→[辣,大份]、省事→[大份]、暖胃→[热]、提神→[咖啡]、轻食→[清淡]；映射不出来的直接丢</td></tr>
+    <tr><td><code>people</code></td><td><b>只填空。</b>用户说了就一个字不改；没说才用旁路估的（比硬性 1 人更贴实际，且猜错了用户看得见也能改）</td></tr>
+    <tr><td><code>budget</code></td><td class="no-g"><b>绝不进 <code>explicit.budget</code></b>，只进 <code>softBudget</code>。原因见下</td></tr>
+    <tr><td><code>mood</code></td><td>意图解析没结论时才用旁路的；同时触发<b>知识层重算</b>（情绪策略直接影响选品打分）</td></tr>
+    <tr><td><code>avoid</code></td><td>进 <code>contextAvoid</code>，与"用户手动删掉的"合并成 <code>avoidNames</code>，选品时<b>只降权不删池</b></td></tr>
+    <tr><td><code>read</code></td><td>进 <code>contextRead</code>，作为"系统为什么这么配"的说明传给复核环节</td></tr>
+  </table>
+
+  <div class="callout red">
+    <b>为什么旁路推的预算不能进 <code>explicit.budget</code>：</b><br>
+    旁路从记忆里读到 <code>budgetRange: [46.28, 87.5]</code>，很自然会填 <code>budget=87.5</code>。但 <code>explicit.budget</code> 的语义是"<b>用户说了这个数</b>" —— 它会 ① 让回复卡片显示一条预算进度条、② 触发超预算重选逻辑、③ 落进记忆当事实。<br>
+    用户从没说过 87.5，却被系统按这个数当墙；而且模型每次推的数还不一样（实测同一句话推出过 <b>87、88、87.5</b> 三个版本），导致同一句输入每次得到不同菜单。<b>软目标只能影响选品偏向，不能当硬指标。</b>
+  </div>
+
+  <h3>失败即降级，永不阻塞</h3>
+  <p><code>analyzeContext</code> <b>永不抛错</b>。超时 / 挂 / 返回乱码 → 返回 <code>{ran: false}</code>，主 loop 用"1 人 + 无倾向"的默认值继续跑 —— 用户至少能拿到一份菜单。进入 <code>if (ctx.ran)</code> 才做合并，否则 intent 原样进下一步。</p>
+</section>
+
+<!-- ================= 6 ================= -->
+<section id="s6">
+  <h2><span class="no">06</span>② 知识匹配（静默，不占 stage）</h2>
+  <p><span class="tag real">纯函数</span><span class="tag rule">零 IO</span><code>knowledge.service.ts:207 composeStrategy()</code> —— 时间一律由参数传入，不读系统时钟，因此可单测、可复现。</p>
+
+  <table>
+    <tr><th style="width:120px">输入</th><th>产出</th><th>下游谁用</th></tr>
+    <tr><td>今天日期</td><td><code>solarTerm</code>（节气区间 → 名称/意象/策略/keywords/blurb）</td><td>选品 +3 分；标题；L3 prompt</td></tr>
+    <tr><td>用户生日</td><td><code>starSign</code>、<code>birthdayMonth</code></td><td>标题「寿星专属」；L3 prompt</td></tr>
+    <tr><td>日期</td><td><code>retrograde</code>（水逆第几天 / start / mid / end）</td><td>标题「水逆急救单」；L3 prompt</td></tr>
+    <tr><td>小时</td><td><code>timeSlot</code>：早餐 5–10 / 午餐 10–14 / 下午茶 14–17 / 夜市 17–22 / 深夜</td><td>回复 meta.slot；反问文案</td></tr>
+    <tr><td><code>mood</code></td><td><code>moodStrategy</code>：tasteStrategy / avoid / warmth / sampleHook</td><td>选品 ±分；prompt 语气</td></tr>
+    <tr><td>忌口（意图 + 记忆合并）</td><td><code>taboo[]</code></td><td>选品硬过滤；prompt 硬约束</td></tr>
+  </table>
+
+  <h3>6 类情绪 → 选品倾向（这张表直接决定菜单长什么样）</h3>
+  <table>
+    <tr><th>情绪</th><th>tasteStrategy（+2）</th><th>avoid（−5）</th><th>语气</th></tr>
+    <tr><td><b>烦躁</b></td><td>甜 / 辣 / 冰</td><td>清淡、健康说教、轻食沙拉、小份</td><td>俏皮</td></tr>
+    <tr><td><b>疲惫</b></td><td>高碳水 / 热 / 提神</td><td>复杂选择、需要动手的、轻食</td><td>正常</td></tr>
+    <tr><td><b>低落</b></td><td>温热 / 甜 / 软糯</td><td>玩梗、嘲讽、说教、星座话术、节气话术、刺激</td><td>温和</td></tr>
+    <tr><td><b>开心</b></td><td>加料 / 大份 / 分享</td><td>轻食、小份、克制</td><td>俏皮</td></tr>
+    <tr><td><b>平淡</b></td><td>尝鲜 / 小惊喜</td><td>重口、太刺激</td><td>正常</td></tr>
+    <tr><td><b>庆祝</b></td><td>仪式感 / 甜品 / 大份</td><td>轻食、小份、将就</td><td>俏皮</td></tr>
+  </table>
+
+  <h3>记忆忌口要为当轮口味让位（但过敏源永不让）</h3>
+  <p>真实场景踩到的：记忆里记着「忌辣」，这一轮用户说「我要吃辣的」。如果两边都当真，系统会陷入自相矛盾 —— 选品因为 taste=辣 挑了一份龙焰鸡腿堡，文案却写「辣的我得拦一下，你忌辣这事儿我记着」，一边给一边拦，用户直接懵。</p>
+
+  <pre><span class="c">// orchestrator.ts:1085 dropOverriddenTaboo()</span>
+SOFT_TASTE_DIMS = [<span class="s">'辣'</span>,<span class="s">'甜'</span>,<span class="s">'冰'</span>,<span class="s">'热'</span>,<span class="s">'咖啡'</span>,<span class="s">'清淡'</span>,<span class="s">'减肥'</span>,<span class="s">'大份'</span>,<span class="s">'薯条'</span>,<span class="s">'可乐'</span>]
+<span class="c">// ⚠️ 刻意不包含花生/海鲜/坚果等过敏源 —— 哪怕用户说"我要吃花生"，
+//    记忆里的花生过敏也绝不能摘。安全永远优先于顺从。</span>
+memoryTaboo.filter(t =&gt; !SOFT_TASTE_DIMS.some(d =&gt; 当轮 taste 含 d 且 t 与 d 互相包含))</pre>
+
+  <div class="callout red">
+    <b>知识层失败也可降级：</b><code>composeStrategy</code> 抛错时用 <code>{now, mood, taboo:[]}</code> 重建一份最简上下文，继续往下走 —— 不允许因为"查节气失败"就白屏。
+  </div>
+</section>
+
+<!-- ================= 7 ================= -->
+<section id="s7">
+  <h2><span class="no">07</span>② menu：MCP 现实校准</h2>
+  <p>这一层是"结果可信度"的来源，也是失败最多的一层。核心原则：<b>拿不到就报错，绝不编</b>。</p>
+
+  <h3>到店 / 外送是两条完全不同的链</h3>
+  <table>
+    <tr><th style="width:88px">履约</th><th>orderType</th><th>beType</th><th>门店来源</th><th>beCode</th><th>算价必传</th></tr>
+    <tr><td>到店自取 / 堂食</td><td>1</td><td>1</td><td><code>query-nearby-stores</code>（city + keyword，<b>不接受经纬度</b>）</td><td>通常为空</td><td>storeCode</td></tr>
+    <tr><td>外送（麦乐送）</td><td>2</td><td>2</td><td><code>delivery-query-stores</code>（只认 addressId）</td><td><b>必传</b></td><td>storeCode + beCode + addressId</td></tr>
+  </table>
+
+  <h3>实际调用序列（含缓存 TTL 与超时）</h3>
+  <div class="grid2">
+    <div class="mini">
+      <h4>到店自取</h4>
+      <p>1. <code>query-nearby-stores</code> <span class="tag rule">5min</span> — 先"城市+商圈关键词"，搜不到放宽到"城市+麦当劳"</p>
+      <p>2. <code>query-meals</code> <span class="tag rule">10min</span> — <code>{storeCode, orderType:1, beType:1}</code></p>
+      <p>3. <code>available-coupons</code> <span class="tag rule">5min</span> — 失败忽略</p>
+      <p>4. <code>list-nutrition-foods</code> <span class="tag rule">24h</span> — 失败忽略</p>
+      <p style="color:var(--ink-3)">整段包一层 45s 超时 <code>withStageTimeout</code></p>
+    </div>
+    <div class="mini">
+      <h4>外送</h4>
+      <p>0. <code>delivery-query-addresses</code> <span class="tag rule">5min</span> — 前置校验，无地址 → NEED_ADDRESS</p>
+      <p>1. <code>delivery-query-stores</code> <span class="tag rule">5min</span> — <code>{addressId, beType:2}</code>，优先记忆里的常去店</p>
+      <p>2. <code>query-meals</code> <span class="tag rule">10min</span> — <code>{storeCode, orderType:2, beType:2, beCode}</code></p>
+      <p>3. 券 / 营养 同上</p>
+      <p>4. <code>calculate-price</code> <span class="tag none">不缓存</span> — 含配送费+打包费，可能连调 2 次</p>
+    </div>
+  </div>
+
+  <h3>门店定位为什么要绕一圈</h3>
+  <p>MCP 只吃「城市 + 关键词」，所以浏览器 <code>lat/lng</code> 必须先在 <code>POST /api/location</code> 用 Nominatim 反查成 <code>city</code> / <code>district</code> 存进记忆（<code>geo.service.ts</code>），流水线里才能用 <code>snapshot.usualCity + usualKeyword</code> 查店。反查失败不阻塞，退化成"让用户自己说城市"。</p>
+
+  <p>门店查询本身也有两级降级，且<b>绝不猜门店</b>：</p>
+  <pre><span class="c">// orchestrator.ts:915 resolveNearbyStore()</span>
+queries = []
+<span class="k">if</span> (city) {
+  <span class="k">if</span> (keyword)                queries.push({beType:1, searchType:2, city, keyword})
+  <span class="k">if</span> (keyword !== <span class="s">'麦当劳'</span>)    queries.push({beType:1, searchType:2, city, keyword:<span class="s">'麦当劳'</span>})
+}
+逐个试，第一个非空就停 → 全空时：
+  city 为空  → NeedLocationError(<span class="s">'打开定位，我才能查到离你最近的门店'</span>)
+  city 非空  → McpDownError(<span class="s">'没在「X」搜到可点餐门店，换个关键词试试'</span>)</pre>
+
+  <div class="callout">
+    <b>网关的四个保护（<code>mcp/gateway.ts</code>）</b><br>
+    ① 每用户连接池（token 指纹变了就重建，空闲 10min 回收，上限 50）<br>
+    ② 只读白名单 TTL 缓存（26 个工具各自 TTL），key = 工具名 + 排序后的参数，容量 500<br>
+    ③ 令牌桶：每用户 20 req/min，全局 550 req/min（平台 600 留余量）；限流时<b>有缓存就吃缓存</b><br>
+    ④ 业务失败不进缓存 —— 麦当劳参数错时仍返回 HTTP 200 且 <code>isError=false</code>，只是 <code>success:false</code>，这种结果若进缓存，整个 TTL 周期都会拿"缺少参数"当数据发出去
+  </div>
+
+  <h3>这一层的所有出口</h3>
+  <table>
+    <tr><th>条件</th><th>SSE</th><th>前端表现</th></tr>
+    <tr><td>没登录 / 访客</td><td><code>error: NEED_LOGIN</code> + return</td><td>错误气泡（无专用按钮，只有访客 upsell 常驻条）</td></tr>
+    <tr><td>外送但没地址</td><td><code>error: NEED_ADDRESS</code></td><td>自动展开地址表单 + "填一个配送地址"按钮</td></tr>
+    <tr><td>到店但没有任何城市</td><td><code>error: NEED_LOCATION</code></td><td>"去设置定位"→ /memory</td></tr>
+    <tr><td>搜到店但为空</td><td><code>error: MCP_DOWN</code>（"没在 X 搜到可点餐门店"）</td><td>错误气泡</td></tr>
+    <tr><td>商品列表为空</td><td><code>error: MCP_DOWN</code></td><td>错误气泡</td></tr>
+    <tr><td>选不出合适组合</td><td><code>error: MCP_DOWN</code>（"换个说法或放宽预算试试"）</td><td>错误气泡</td></tr>
+    <tr><td>token 失效</td><td><code>error: TOKEN_INVALID</code></td><td>"重新登录"按钮</td></tr>
+    <tr><td>任何其它</td><td><code>toApiError()</code> 映射（400/429/503/500）</td><td>错误气泡</td></tr>
+  </table>
+</section>
+
+<!-- ================= 8 ================= -->
+<section id="s8">
+  <h2><span class="no">08</span>选品引擎（确定性核心）</h2>
+  <p><span class="tag real">无 LLM</span><code>selector.service.ts:595 selectProducts()</code> —— 打分完全可复现，"规则做想"的落点。这也是历史上最容易出 bug 的地方，第 15 节整节讲一次真实事故。</p>
+
+  <h3>第一步：硬过滤（直接出局）</h3>
+  <table>
+    <tr><th style="width:200px">条件</th><th>说明</th></tr>
+    <tr><td><code>available === false</code></td><td>只认 available / isAvailable / saleStatus / status 四个字段</td></tr>
+    <tr><td>命中忌口词典</td><td>忌口词会按同义词表扩展（辣→香辣/麻辣/辣椒…，奶→芝士/奶油/冰淇淋…），命中 name/category/description/combo 任一即排除</td></tr>
+    <tr><td><code>price &lt;= 0</code></td><td>无价商品没法算价下单，直接丢</td></tr>
+    <tr><td><code>withOrderOnly</code></td><td>不淘汰，但移入"加购池"，只有主选品成型后才可能补进来</td></tr>
+  </table>
+
+  <div class="callout red">
+    <b>这里曾经埋过一个决定性 bug：</b><code>canWithOrder</code> 被当成「可售」用了。实测 90 件商品里 <code>canWithOrder=true</code> 只有 12 件，且<b>全是</b>「随单购麦金卡优惠」加购套餐 → 78 件正常单品（板烧、薯条、可乐）全被过滤，于是"说什么都只推那几份四件套"。现在 <code>canWithOrder</code> 只记为 <code>withOrderOnly</code>，与可售状态彻底分开。
+  </div>
+
+  <h3>第二步：打分（每件商品的最终分）</h3>
+  <table>
+    <tr><th style="width:70px">分值</th><th style="width:230px">触发条件</th><th>理由文案</th></tr>
+    <tr><td class="ok">+5</td><td><b>整餐的 serves 正好等于人数</b>（"一份就够 N 人吃"）</td><td>一份就够 N 人吃</td></tr>
+    <tr><td class="ok">+4</td><td><b>命中用户嘴上说的口味</b>（"来点甜的""我要减肥"）</td><td>你想吃的（甜）</td></tr>
+    <tr><td class="ok">+3</td><td>命中节气 keywords</td><td>应季（热汤/暖胃）</td></tr>
+    <tr><td class="ok">+3</td><td>命中记忆里的本命单品</td><td>你的本命（麦辣鸡腿堡）</td></tr>
+    <tr><td class="ok">+2</td><td>口味匹配当前情绪策略</td><td>对情绪有用（甜/冰）</td></tr>
+    <tr><td class="ok">+2</td><td>命中记忆里的特制习惯</td><td>你常点的（可乐去冰）</td></tr>
+    <tr><td class="ok">+2</td><td>整餐 serves &lt; people（要叠份数，一份不够）</td><td>N 人份，一份够 N 人</td></tr>
+    <tr><td class="ok">+2 / +1</td><td>单人场景下，套餐自带饮料 / 自带小食</td><td>（不单独出文案，<code>whyOf</code> 会补"套餐自带饮料和小食"）</td></tr>
+    <tr><td class="ok">+1</td><td>整餐 serves &gt; people（一份有多）</td><td>够 N 人吃</td></tr>
+    <tr><td class="ok">+1</td><td>1 人 + 单人套餐（整餐天然比单点完整）</td><td>—</td></tr>
+    <tr><td class="ok">+1</td><td>价格落在历史预算区间</td><td>在你平时的价位</td></tr>
+    <tr><td class="no-g">−4</td><td>用户说减肥/清淡，命中高热量（套餐/炸/芝士/新地…）</td><td>你说要减肥，这个偏重</td></tr>
+    <tr><td class="no-g">−5</td><td>命中情绪策略 avoid</td><td>此时不合适（轻食沙拉）</td></tr>
+    <tr><td class="no-g">−6</td><td>不是吃的（酱/周边/毛绒/玩具/袋）</td><td>这不是主餐</td></tr>
+    <tr><td class="no-g">−100</td><td>忌口双保险命中</td><td>含忌口（花生）</td></tr>
+  </table>
+
+  <p>排序：分数降序 → 价格升序 → 名称（保证稳定，不会每次刷新换一批）。<b>负分商品直接不入选</b>；<code>avoidNames</code> 命中的商品被压到 <code>min(score,0) − 1</code>，保证一定落负，但<b>不从池里删掉</b> —— 万一避开后凑不出一单，兜底还得有东西可选。</p>
+
+  <h3>第三步：人数档位与份数（骨架）</h3>
+  <div class="grid2">
+    <div class="mini">
+      <h4>servesOf()：这份餐能喂几个人</h4>
+      <p>双人/两人/2人 → <b>2</b></p>
+      <p>三人/3人 → <b>3</b></p>
+      <p>四人/4人 → <b>4</b></p>
+      <p>多人/全家 → <b>4</b></p>
+      <p>其它 → <b>1</b></p>
+      <p style="color:var(--red-dark);margin-top:6px"><b>顺序不能动</b>：早期把"三人"和"多人/全家/四人"合并成一句 <code>return 4</code>，直接导致三人餐永远排不过单人套餐 —— 详见第 15 节</p>
+    </div>
+    <div class="mini">
+      <h4>qtyOf()：这一 SKU 买几份</h4>
+      <p>整餐且 serves &gt; 1 → <code>ceil(people / serves)</code></p>
+      <p>整餐且 serves = 1 → <code>min(people, 4)</code></p>
+      <p>主食单品 → <code>min(people, 4)</code></p>
+      <p>饮品 / 甜品 → <code>ceil(people / 2)</code></p>
+      <p>其它 → <code>1</code></p>
+      <p style="color:var(--red-dark);margin-top:6px"><b>必须 ceil 不能 floor</b>：试过 floor 想省掉 3 人时多的 1 人份，结果是先给"双人餐 ×1"再补单人套餐，单人套餐份数是 <code>min(3,4)=3</code>，最终 5 人份、价格翻倍</p>
+    </div>
+  </div>
+
+  <h3>structureCap()：一顿饭的结构上限</h3>
+  <table>
+    <tr><th style="width:80px">角色</th><th style="width:180px">上限</th><th>为什么</th></tr>
+    <tr><td>主食</td><td><code>maxMainSku</code>：1 人 1 款 / 2 人 2 款 / 3 人以上 3 款</td><td>主食已按人数配份数，不该堆款</td></tr>
+    <tr><td>小食</td><td>1–2 人 <code>people + 1</code>；<b>3 人以上 <code>people</code></b></td><td>多人餐自带的小食是按人头给的，再给余量就等于"每人一份再多一份" —— 实测因此挑中 ¥39.9 的「麦麦炸鸡5拼」，3 人餐从 ¥128 涨到 ¥161.9</td></tr>
+    <tr><td>饮品</td><td><code>min(people, 4)</code></td><td>每人 1 杯</td></tr>
+    <tr><td>甜品</td><td>≤4 人 <b>1</b>；5 人以上 2</td><td><code>qtyOf</code> 已按 <code>ceil(people/2)</code> 放大，3 人 1 个 SKU ×2 份就是 2 人有甜点；再加一个 SKU 会变成"比人数还多的甜品"</td></tr>
+  </table>
+
+  <div class="callout red">
+    <b>上限的语义是「总数」而不是「附加数」。</b>因为套餐自带的饮料和小食<b>也要占用额度</b>（<code>comboSlots()</code>）。早期按附加数算，1 个人点了含饮料的套餐后，结构上限还以为欠一杯饮料，又补了杯无糖可乐 —— <b>一餐两杯饮料</b>。
+  </div>
+
+  <h3>第四步：四轮装箱（贪心，份数参与计价）</h3>
+  <div class="pipe">
+    <div class="pipe-step">
+      <div class="ps-no">1</div>
+      <div class="ps-body">
+        <b>整餐优先，按人数匹配度分档 —— 不是按分数</b>
+        <div class="where">selector.service.ts:747 tierOf / overOf</div>
+        <p>分数是<b>加权求和</b>，"一份 3 人份的餐"和"3 份 1 人餐"在总价、剩菜、饮品份数上完全不同，<b>两类商品根本不可比</b>。所以做成结构优先级，而不是继续在分数上加权重。</p>
+      </div>
+    </div>
+    <div class="pipe-step">
+      <div class="ps-no">2</div>
+      <div class="ps-body">
+        <b>整餐没喂饱 → 用单品汉堡补缺口</b>
+        <div class="where">selector.service.ts:781</div>
+        <p>只在 <code>fed &lt; people</code> 时才跑，且跳过 <code>isCombo</code>（否则又会塞整餐）。</p>
+      </div>
+    </div>
+    <div class="pipe-step">
+      <div class="ps-no">3</div>
+      <div class="ps-body">
+        <b>补配角（小食 / 饮品 / 甜品）</b>
+        <div class="where">selector.service.ts:814</div>
+        <p>受结构上限约束，且<b>配角单价不得超过主餐单价的 60%</b>（<code>sidePriceCap</code>）。</p>
+      </div>
+    </div>
+    <div class="pipe-step">
+      <div class="ps-no">4</div>
+      <div class="ps-body">
+        <b>预算有余额 → 最多补一件甜品/小食</b>
+        <div class="where">selector.service.ts:830</div>
+        <p><b>必须走 <code>take()</code></b>。早期这段自己 push + 自己 <code>desserts++</code>，绕过了 <code>seenCore</code> 去重和结构上限，是"重复配置"的另一个漏点。</p>
+      </div>
+    </div>
+    <div class="pipe-step">
+      <div class="ps-no">5</div>
+      <div class="ps-body">
+        <b>兜底：一件都没选出来 → 取最便宜 3 件</b>
+        <div class="where">selector.service.ts:843</div>
+        <p>即使被预算拦下也要出东西，否则用户拿到空菜单。</p>
+      </div>
+    </div>
+    <div class="pipe-step">
+      <div class="ps-no">6</div>
+      <div class="ps-body">
+        <b>随单购项：只在没吃饱时补作加购</b>
+        <div class="where">selector.service.ts:865</div>
+        <p>随单购里混着「鱼牛汉堡随心选单人餐」这种含主食的完整餐。早期不管三七二十一往菜单里塞，出现「汉堡包 + 麦辣鸡腿汉堡 + 鱼牛汉堡单人餐」—— 1 个人 3 项主食。</p>
+      </div>
+    </div>
+  </div>
+
+  <h3>第一轮的分档细节（本次修复的核心）</h3>
+  <pre><span class="k">tierOf</span>(p):                    <span class="c">// 0 最好</span>
+  serves === people  → 0        <span class="c">// 一份刚好够所有人吃</span>
+  serves &gt;   people  → 1        <span class="c">// 一份有多，比如 2 人点三人餐</span>
+  serves &gt;= 2        → 2        <span class="c">// 多人餐但一份不够，按 qtyOf 叠份数</span>
+  serves === 1       → 3        <span class="c">// 单人餐，只在凑不出多人餐时才用</span>
+
+<span class="k">overOf</span>(p):                    <span class="c">// 按现有份数规则真会多出来几个人份</span>
+  serves &lt; 2  → max(0, people − 1)
+  else        → serves × qtyOf − people
+
+排序：tier ↑ → over ↑ → serves ↓ → score ↓ → price ↑</pre>
+
+  <p>同档内"超额人数少的优先 → 覆盖人数多的优先 → 分数高的优先 → 便宜的优先"。这条排序让「一份刚好够 3 人」的三人餐永远排在「3 份单人套餐」之前，<b>与打分多少无关</b>。</p>
+
+  <h3>补配角的 60% 价格上限</h3>
+  <div class="callout red">
+    <b>为什么不能用「不超过主餐单价」这种绝对比较：</b>补位环节会挑分数最高的那件，而"在你平时价位"这个 +1 分对小食也生效。于是 ¥55.9 的双人餐后面跟了一份 <b>¥39.9</b> 的「麦麦炸鸡5拼」—— 两个人一餐 ¥118.3，跟三个人的 ¥122 几乎一样。而 ¥39.9 &lt; ¥55.9 能轻松通过"不超过主餐"的检查。<br>
+    改成 60% 比例：双人餐 ¥55.9 → 上限 ¥33.5（¥39.9 拼盘出局，¥15 麦乐鸡、¥13.5 新地都还在）；单套餐 ¥32 → 上限 ¥19.2，小食甜品全能进。<b>没有主餐时（纯小食单）不限制</b>，否则一件都选不出来。
+  </div>
+
+  <h3>第五步：转成菜单行</h3>
+  <pre>buildMenuItems() → { name, spec: <span class="s">"×2 · 去冰"</span>, why, price: <b>单价 × 份数</b>, productId, originalPrice? }</pre>
+  <p><code>why</code> 必须有内容：命中理由取前两条；预算补位/加购进来的商品没有理由时，按角色兜底（"一餐里的主心骨"/"配着吃刚好"/"收尾来一口"/"顺手加一份"）—— 之前会出现光秃秃一行商品名，看着像 bug。套餐还会额外说明"套餐自带饮料和小食"，否则用户看到菜单里没有单独的可乐会以为漏了。</p>
+
+  <div class="callout green">
+    <b>核心不变式：</b><code>qtyOf()</code> 是唯一份数来源，选品计价和渲染显示都调它。<code>tests/selector.test.ts</code> 已锁定这条规则（含一份真实菜单的三人场景 fixture），别改。
+  </div>
+</section>
+
+<!-- ================= 9 ================= -->
+<section id="s9">
+  <h2><span class="no">09</span>③ review：两道复核</h2>
+  <p><span class="tag new">新增</span><code>menu-review.service.ts</code> —— 在<b>出结果之后、算价之前</b>做一次判断。两道闸门，顺序不能反。</p>
+
+  <h3>第一道：structuralCheck()（纯算术，不调模型）</h3>
+  <p><code>menu-review.service.ts:343</code> —— 先跑这道。<b>命中就直接返回，跳过模型</b>，既更可靠也更省几百毫秒到几秒。</p>
+
+  <pre><span class="c">// 只查一件事：一份够吃 N 人的多人餐已经在菜单里，
+// 却还配了能独立成餐的单人套餐 —— 3 人收到 6 人份。</span>
+
+servesOfName(name):  三人→3 · 四人→4 · 双人→2 · 多人/全家→4 · 其它→1
+isComboName(name):   /套餐|件套|单人餐|双人餐|多人餐|分享餐|随心选|随心配|组合|拼盘/ 或 /N人餐/
+
+multiFeed = Σ(serves × qty)   over 所有 serves &gt;= 2 的项
+
+<span class="k">if</span> (没有多人餐 || multiFeed &lt; people) return []   <span class="c">// 单人餐是必要的，不能删</span>
+<span class="k">if</span> (没有单人套餐)                     return []   <span class="c">// 没什么可删</span>
+<span class="c">// multiFeed >= people 说明多人餐自己就够吃，单人套餐纯属重复</span>
+→ 全部单人套餐标记 remove_extra_main</pre>
+
+  <p>安全边界（宁可放过，不可误杀）：</p>
+  <ul>
+    <li>只在"多人餐覆盖了全部人数"时才判重复，<b>覆盖率不足就别动</b>；</li>
+    <li>只删单人<b>套餐</b>，<b>不碰单品汉堡</b>（用户可能就想加个堡换口味）；</li>
+    <li>删完必须仍然够吃，否则整体放弃；</li>
+    <li><b>只做减法，不新增、不改价。</b></li>
+  </ul>
+
+  <div class="callout red">
+    <b>为什么模型之外还要这一层：</b>复核 prompt 里已经写了"多人餐按名字人数计份"，但那是<b>请求模型理解</b>，不是<b>保证</b>。LLM 可能超时、返回乱码、或者干脆判成"合理"—— 这几种情况复核都退化成"没发现问题"，菜单原样发给用户。<b>人数档位对不对是算术问题，算术不该交给概率模型。</b>
+  </div>
+
+  <h3>第二道：reviewMenu()（模型判断，本地执行）</h3>
+  <p><code>menu-review.service.ts:403</code> —— 结构体检没命中才调模型。<b>永不抛错</b>，任何异常都退化成"没发现问题"。</p>
+
+  <table>
+    <tr><th style="width:110px">参数</th><th>值</th><th>为什么</th></tr>
+    <tr><td>temperature</td><td><code>0.1</code></td><td>这是判断题，不是创作题</td></tr>
+    <tr><td>max_tokens</td><td><code>2000</code></td><td>给 500 时 issues 没写完就被截断 → 解析失败 → 一律按"没问题"处理，复核等于白跑；给 1200 仍被吃满（推理模型的思考过程也算 completion）</td></tr>
+    <tr><td>timeout</td><td><code>12s</code></td><td>最后一道闸门，宁可贵一点也不能哑火</td></tr>
+  </table>
+
+  <p>模型被要求检查的六件事：主食份数是否超人数（<b>多人餐按名字人数计份</b>）/ 饮料是否重复 / 甜品是否过量 / 主食是否重复堆叠 / 有没有明显不合常理的（1 人 4 个主食）/ 用户手动删过的有没有被配回来。</p>
+
+  <h3>结论分三档，处理方式完全不同</h3>
+  <table>
+    <tr><th style="width:90px">severity</th><th>含义</th><th>本地动作</th><th>为什么</th></tr>
+    <tr><td><code>none</code></td><td>没问题</td><td><code>keep</code> 不动</td><td>—</td></tr>
+    <tr><td><code>minor</code></td><td>小毛病（多一杯饮料、多一份甜品）</td><td><code>prune</code>：<b>本地做减法</b></td><td>只删不加，价格必然只降不升，不会冲破预算</td></tr>
+    <tr><td><code>major</code></td><td>骨架不对（1 个人 3 个主食）</td><td><code>rebuild</code>：带 <code>avoidNames</code> 重跑选品</td><td>删一样救不回来。把"最该换掉的名字"带回选品，让<b>规则</b>在同一批真实商品里重新组一单 —— 仍然不用模型选品</td></tr>
+  </table>
+
+  <h3>三条必须自洽的降级规则</h3>
+  <pre><span class="c">// 1) 说 major 却给不出任何可执行手段 → 直接判 none</span>
+<span class="k">if</span> (severity === <span class="s">'major'</span> &amp;&amp; avoid.length === 0 &amp;&amp; issues.length === 0) severity = <span class="s">'none'</span>
+<span class="c">// 2) 说 major 但没有可避开的名字 → 降级 minor，只做减法</span>
+<span class="k">if</span> (severity === <span class="s">'major'</span> &amp;&amp; avoid.length === 0) severity = <span class="s">'minor'</span>
+<span class="c">// 3) avoid 必须是菜单里真实存在的商品名</span>
+<span class="c">//    模型很爱写"避免同时点多个同类汉堡"这种建议句，
+//    直接拿去选品会因匹配不上而完全不起作用（等于没重配）</span>
+avoid = avoid.filter(s =&gt; menuNames.some(n =&gt; n.includes(s) || s.includes(n))).slice(0, 3)
+
+<span class="c">// 4) 重配结果必须确实不一样才采纳</span>
+same = retryMenu.length === menu.length &amp;&amp; 每一项 name+price 都相同
+<span class="k">if</span> (!same) 采纳重配 <span class="k">else</span> 保留原菜单 + 做减法兜一下</pre>
+
+  <div class="callout blue">
+    <b>「整体替换 vs 并入」这个语义必须传对。</b>主 loop 出单是<b>整单替换</b>购物车，所以默认 <code>cartRelation: 'replace'</code> —— 判断重点是"用户手动删过的东西别配回来"，而不是"跨车去重"。语义搞反会让模型建议无效动作，白烧一次调用。<code>replace</code> 模式下模型会被明确告知：<b>不用管跨车重复，车里的内容会被清掉。</b>
+  </div>
+
+  <h3>为什么要把购物车一起给模型看</h3>
+  <p>早期只校验"这一单"内部是否自洽，于是出现过这种场面：车里已经有一份麦辣鸡腿堡套餐，用户又说「想吃辣的」，系统配了一份同样带麦辣鸡腿堡的菜单<b>整体替换</b>购物车 —— 单看这一单没毛病，放进车里就是重复。</p>
+
+  <p>而购物车还携带一条<b>信息量最大、也最容易被忽略</b>的信号：</p>
+  <pre><span class="c">// orchestrator.ts:1118 detectUserRemovals()
+// 场景：上一轮系统给了「麦辣鸡腿堡套餐 + 薯条 + 可乐」，用户手动把薯条删了。
+// 这一轮他说「来点辣的」—— 如果系统不看购物车，会重新配一份含薯条的菜单，
+// 整份替换购物车。用户的删除操作被无声抹掉。</span>
+
+<span class="c">// 为什么不能只看购物车：车里只有"现在有什么"，没有"本来有什么"。
+// 少的那样是用户主动删的，还是上一轮本来就没有 —— 必须和上一轮菜单比才知道。
+// 所以读 chats 表最近一条的 reply_json。</span>
+prevNames = 最近一条 chat 的 menu 名字
+<span class="k">if</span> (上一轮是反问 || 没有菜单 || 购物车为空) return []   <span class="c">// 没有对比基准，不猜</span>
+userRemovals = prevNames.filter(n =&gt; 购物车里找不到)</pre>
+
+  <p>这条信号在<b>选品之前</b>就被读取（<code>orchestrator.ts:410</code>），与旁路的 <code>contextAvoid</code> 合并成 <code>avoidNames</code> 传给 <code>selectProducts</code>。为什么要提前：等选完品再读，就只能靠模型事后"建议删掉"，那是补救而不是避免，而且模型未必看得出。</p>
+</section>
+
+<!-- ================= 10 ================= -->
+<section id="s10">
+  <h2><span class="no">10</span>④ coupon：定价与预算收敛</h2>
+
+  <h3>两套定价，绝不混用</h3>
+  <div class="grid2">
+    <div class="mini">
+      <h4>到店：自己加</h4>
+      <p><code>computeTotals(menu)</code> 把每行 <code>price</code>（已是小计）相加。不调任何外部算价，省额度、可复现。</p>
+    </div>
+    <div class="mini">
+      <h4>外送：必须问 MCP</h4>
+      <p><code>calcDeliveryPrice()</code> → <code>calculate-price</code>，返回 <code>total</code> <b>已含配送费 + 打包费</b>。商品单价相加会少算这两项，用户看到 77、结算变 84，是最伤信任的一种错。</p>
+    </div>
+  </div>
+
+  <h3>预算收敛算法（含外送费，最多重选一次）</h3>
+  <pre><span class="k">if</span> (budget !== undefined &amp;&amp; finalTotal &gt; budget + 0.01) {
+  goodsSum  = 商品价合计
+  feeActual = max(0, round2(finalTotal − goodsSum))   <span class="c">// 外送=运费+打包；到店=0</span>
+  goodsBudget = budget − feeActual
+
+  <span class="k">if</span> (goodsBudget &gt;= 10) {
+    第二次 selectProducts({ budget: goodsBudget * 0.97 })  <span class="c">// 留 3% 余量，避免卡临界</span>
+    重新算价 → priceDelivery()
+  } <span class="k">else</span> {
+    保留原方案并打日志（预算扣掉费用后不够 ¥10，组不出单）
+  }
+}
+finalBudget = { limit, ok: total ≤ budget + 0.001, remaining }</pre>
+
+  <p>为什么要先算一遍再重选：外送的可用预算不是 <code>budget</code>，而是 <code>budget − 运费 − 打包费</code>。早期直接拿 80 去选品，商品价刚好 80，加大 9 元运费变 89 —— 用户明确说了 80，就必须真的落在 80 以内。</p>
+
+  <div class="callout blue">
+    <b>外送费用明细的诚实原则：</b>拿得到 <code>deliveryPrice/packingPrice</code> 就单独透出给前端列一行；拿不到就<b>不显示</b>，绝不写 0 假装免配送费。
+  </div>
+
+  <div class="callout red">
+    <b>券目前只是动画，不参与算价。</b>拉了 <code>available-coupons</code>，有券就推一个 <code>stage: coupon</code>（"顺便翻了翻你的优惠券…"），但券从未进入任何金额计算。所以"券后实付"这个词目前名不副实 —— 详见第 16 节 #3。
+  </div>
+</section>
+
+<!-- ================= 11 ================= -->
+<section id="s11">
+  <h2><span class="no">11</span>⑤ compose：LLM 边界</h2>
+
+  <h3>LLM 只被允许做一件事</h3>
+  <pre>输入：system prompt（人设 / 记忆 / 今日背景 / 输出格式 / 安全模式）+ user prompt（原话 + 约束 + <b>系统已选好的完整事实壳</b>）
+输出：{"hook": "2–3句开场，可用 **双星号** 高亮", "quote": "1–2句收尾金句"}
+参数：json mode · temperature 0.9 · max_tokens 600 · 失败走模板</pre>
+
+  <div class="callout red">
+    <b>硬边界：</b>prompt 里明写"菜单已经由系统生成好了，你不需要也不允许输出"。模型拿不到写价格的权限，所以不存在"LLM 报错价"的可能。<code>renderReply()</code> 里所有数字来自本进程计算。
+  </div>
+
+  <h3>system prompt 五层装配（<code>prompts/system.ts:31</code>）</h3>
+  <table>
+    <tr><th style="width:70px">层</th><th>内容</th><th>关键约束</th></tr>
+    <tr><td>L1 人设</td><td>"麦门知己，不是客服是懂用户的老友"</td><td>禁"亲爱的用户/您好/以下是为您推荐"；禁 markdown/列表符号；emoji 最多 1 个</td></tr>
+    <tr><td>L2 记忆</td><td>昵称/星座/生日月/忌口/常点/特制/常去店/预算区间/最近情绪</td><td>引用要具体（"上周四你烦躁时吃了麦麦鸡"）；<b>禁止编造记忆</b>；访客明确告知"没有记忆，不要假装记得"</td></tr>
+    <tr><td>L3 知识</td><td><code>strategyToPrompt()</code>：节气/星座/水逆/时段/情绪策略/硬约束</td><td>安全模式下不注入任何节气星座水逆文案</td></tr>
+    <tr><td>L4 事实</td><td>在 user prompt 里：门店、时段、标题、合计、原价、预算、热量、逐行菜单（name/spec/price/why）</td><td>"只能基于这些写文案，不能改动任何商品或价格"</td></tr>
+    <tr><td>L5 输出</td><td>严格 JSON，两字段</td><td>不许输出菜单、不许 markdown 代码块</td></tr>
+  </table>
+
+  <h3>失败路径（这是常驻路径，不是意外）</h3>
+  <ul>
+    <li>LLM 抛错 / 超时 / 返回不是 JSON / <code>hook</code> 为空 → <code>parseCopy()</code> 容忍三重解析（直解 → ```json 围栏 → 首尾花括号截取）仍失败则 <code>pickFallback()</code>。</li>
+    <li><code>pickFallback()</code> 按 <b>情绪 × 是否老用户 × 预算是否达标 × 安全模式 × 门店名</b> 挑模板 —— 模板是产品生命线，LLM 挂了回复照样完整。</li>
+    <li><code>cleanHook()</code> 清洗：剥代码块、剥列表符号、剥"好的/当然/没问题"开场，保留 <code>**关键词**</code>（前端唯一富文本约定）。</li>
+  </ul>
+
+  <h3>标题也是规则出的</h3>
+  <p><code>pickTitle()</code>（<code>orchestrator.ts:1225</code>）按优先级：≥3 人 →「霜降贴膘4人餐」；烦躁 →「你的水逆急救单」；疲惫 →「今晚不用思考套餐」；低落 →「今天先吃热的」；庆祝 →「值得庆祝的一单」；生日月 →「寿星专属」本命单；有常点 →「老规矩」本命单；否则「霜降推荐」。</p>
+
+  <div class="callout">
+    <b>实测口径：</b>访客（<code>guest</code> 或未登录）<b>不调文案 LLM</b>，直接走模板。所以访客的 hook 是固定的几种，不是模型写的。<br>
+    <span style="color:var(--red-dark)">但访客<b>会</b>调意图 LLM 和旁路 LLM</span> —— 因为 <code>NEED_LOGIN</code> 检查在 <code>intent</code> 和 <code>context</code> 之后才发生（见 16 节 #9）。
+  </div>
+</section>
+
+<!-- ================= 12 ================= -->
+<section id="s12">
+  <h2><span class="no">12</span>⑥ 落盘与购物车同步</h2>
+
+  <h3>chats 表存的东西，比看上去重要</h3>
+  <table>
+    <tr><th>字段</th><th>为什么必须存</th></tr>
+    <tr><td><code>reply_json</code></td><td>confirm 时取菜单快照，用户确认的就是当时看到的；也是 <code>detectUserRemovals</code> 和 <code>lastTurnWasClarify</code> 的唯一数据源</td></tr>
+    <tr><td><code>menu_hash</code></td><td>确认期间菜单被改就拒单（409）</td></tr>
+    <tr><td><code>fulfillment</code></td><td>下单必须沿用对话时的场景，否则商品编码对不上</td></tr>
+    <tr><td><code>store_code</code></td><td>查菜单时真实用过的店，比按名字重搜可靠（避免同城同名店）</td></tr>
+    <tr><td><code>be_code</code></td><td>外送算价/建单的必需品，重查可能换店</td></tr>
+    <tr><td><code>address_id / address_text</code></td><td>外送必须同一地址，且要展示给用户确认</td></tr>
+  </table>
+
+  <h3>购物车：从只读卡片变成可编辑的车</h3>
+  <div class="callout blue">
+    <b>产品改动：</b>菜单不再是聊天气泡里的一张只读卡片，而是右边可编辑的购物车。用户说「两个人 100 块」→ 生成一份菜单 → <b>整单替换</b>购物车。
+  </div>
+
+  <pre><span class="c">// orchestrator.ts:757 → cart.service.ts:429 replaceFromMenu()</span>
+<span class="k">if</span> (userId &amp;&amp; !guest &amp;&amp; finalMenu.length &gt; 0) {
+  await replaceFromMenu(userId, finalMenu, { fulfillment, addressId, store, storeCode, beCode })
+}
+
+<span class="c">// MenuItem.price 是**小计**，spec 里带着 "×2"。入车必须拆成「单价 × 数量」，
+// 否则购物车合计会翻倍。</span>
+qty   = parseQty(spec) ?? 1
+price = round2(m.price / qty)</pre>
+
+  <p><b>为什么是替换而不是合并：</b>这句话的语义是"重新组一单"，不是"再加一单"。合并会变成「上一轮的点餐 + 这一轮的点餐」叠一起，越点越多。用户明确说「再加」时才走 <code>addItem</code>（见 ①.5 购物车直改）。</p>
+
+  <p><b>失败不影响主链路：</b>菜单已经在 reply 里返回了，购物车写失败最多是用户手动加一次，不该让他连回复都收不到。<b>没有 <code>productId</code> 的菜单项会被跳过入车并打日志</b> —— 那种项本来也下不了单。</p>
+
+  <h3>前端侧栏的联动</h3>
+  <table>
+    <tr><th style="width:150px">时机</th><th>行为</th></tr>
+    <tr><td>收到 reply 且 <code>menu.length &gt; 0</code></td><td>自动 <code>cartOpen = true</code> 并 <code>reload()</code></td></tr>
+    <tr><td>收到 reply 但 <code>menu</code> 为空（改车指令）</td><td><b>只 reload，不弹侧栏</b> —— 用户只是删了一项，不该把侧栏弹出来抢注意力</td></tr>
+    <tr><td>任何时候</td><td>右下角浮动按钮显示「🧺 N 件 · ¥X」，点开侧栏</td></tr>
+  </table>
+
+  <h3>记忆写回（失败一律忽略，绝不影响用户）</h3>
+  <div class="grid3">
+    <div class="mini"><h4>情绪日记</h4><p><code>addMoodEntry({date, mood, trigger:原话, recommended:标题})</code></p></div>
+    <div class="mini"><h4>仪式状态</h4><p><code>updateRitual({lastSolarTerm, retrograde})</code></p></div>
+    <div class="mini"><h4>忌口沉淀</h4><p>本次识别出的 taboo 追加进长期事实，下次自动硬过滤</p></div>
+  </div>
+  <p style="margin-top:10px">下单成功后额外 <code>recordOrder()</code> 记录 <code>{date, items, total, store}</code>，用于本命单品/预算区间/常去门店的统计。<b>访客全程用 InMemoryStore，什么都不留，也不写 chats 表。</b></p>
+</section>
+
+<!-- ================= 13 ================= -->
+<section id="s13">
+  <h2><span class="no">13</span>下单：两条结算路径</h2>
+
+  <div class="grid2">
+    <div class="mini">
+      <h4>POST /api/orders/confirm {chatId}</h4>
+      <p>按<b>对话时的菜单快照</b>下单。用户在聊天里看到什么，就买什么。</p>
+      <p style="color:var(--ink-3)">限流 10/min</p>
+    </div>
+    <div class="mini">
+      <h4>POST /api/orders/confirm-cart</h4>
+      <p>按<b>购物车当前状态</b>下单。用户手动删了一项再下单，必须按删后的算钱。</p>
+      <p style="color:var(--ink-3)">限流 10/min</p>
+    </div>
+  </div>
+
+  <div class="callout blue">
+    <b><code>confirmFromCart</code> 不复制 <code>confirmOrder</code> 的流程。</b>那段有门店解析、价格复核、<code>takeWayCode</code>、幂等、落库，抄一遍必然漂移。它的做法是：<b>把购物车快照成一条 chats 记录（menu_hash 一起算好）→ 直接调 <code>confirmOrder</code> 走原路径。</b>这样两条下单路径永远一致，任何一边的修复都会同时生效。
+  </div>
+
+  <h3>confirm 六道校验</h3>
+  <p><code>order.service.ts:102 confirmOrder()</code> —— 这是整条链路唯一会动用户账号的地方，所以校验最密。</p>
+
+  <div class="pipe">
+    <div class="pipe-step">
+      <div class="ps-no">1</div>
+      <div class="ps-body"><b>归属校验</b><div class="where">chat.user_id === 当前 userId</div><p>不是自己的 chat 直接 403，并打 warn 日志。防止拿别人 chatId 建单。</p></div>
+    </div>
+    <div class="pipe-step">
+      <div class="ps-no">2</div>
+      <div class="ps-body"><b>幂等</b><div class="where">SELECT orders WHERE chat_id=? AND status!='canceled'</div><p>命中就返回同一张单（<code>reused: true</code>），重复点"确认"不会建两张单。</p></div>
+    </div>
+    <div class="pipe-step">
+      <div class="ps-no">3</div>
+      <div class="ps-body"><b>快照校验</b><div class="where">stableHash(reply.menu) === chat.menu_hash</div><p>菜单变了 → 409「菜单在你确认期间变了」；每行必须有 <code>productId</code>，否则让用户重新问一次（不给 MCP 报看不懂的错）。</p></div>
+    </div>
+    <div class="pipe-step">
+      <div class="ps-no">4</div>
+      <div class="ps-body"><b>履约一致性</b><div class="where">opts.fulfillment vs chat.fulfillment</div><p>请求传了且与对话不一致 → 409。因为菜单商品编码是按当时场景查的，换场景必然下不了单。<b>不传就沿用 chat 里那个。</b></p></div>
+    </div>
+    <div class="pipe-step">
+      <div class="ps-no">5</div>
+      <div class="ps-body"><b>价格复核（服务端重算）</b><div class="where">到店 calculate-price(orderType=1) / 外送 calcDeliveryPrice()</div><p>差异 &gt; 1 元 → 409 并带上新价，前端给"按新价下单"。到店还要从 <code>takeWayList[0].code</code> 取 <code>takeWayCode</code>（create-order 必填，只能从这拿）。复核失败不阻塞下单（价格最终由 create-order 决定），只记日志。</p></div>
+    </div>
+    <div class="pipe-step">
+      <div class="ps-no">6</div>
+      <div class="ps-body"><b>建单 + 落库</b><div class="where">create-order → adaptOrder() → INSERT orders</div><p>到店：<code>{storeCode, orderType:1, beType:1, items, takeWayCode}</code>；外送：<code>{..., beCode, addressId}</code>。返回只透出 <code>payUrl</code>，前端 <code>window.open</code> 让用户自己付。</p></div>
+    </div>
+  </div>
+
+  <div class="callout red">
+    <b>金额口径：</b><code>create-order</code> 的返回决定最终金额。解析不出来时先看有没有可读的失败原因 —— 真实返回长这样：
+    <code>{"success":false,"code":600039,"message":"今日下单数已经上限"}</code>。<br>
+    这类响应<b>完全可读</b>，早期一律回"建单返回看不懂，先去 App 里看看"，用户根本不知道是被限购了，只会一直重试。<code>mcpFailureReason()</code> 就是为此加的：只有既没有 orderId、也没有可读 message 时才算真的"看不懂"。
+  </div>
+</section>
+
+<!-- ================= 14 ================= -->
+<section id="s14">
+  <h2><span class="no">14</span>支付卡与状态轮询</h2>
+  <p>建单成功后的前端行为（<code>ChatView.vue startPolling</code>）：</p>
+  <table>
+    <tr><th>参数</th><th>值</th><th>原因</th></tr>
+    <tr><td>轮询间隔</td><td>前 30 秒 3 秒一次，之后 10 秒一次</td><td>刚付完最想立刻看到"正在出餐"</td></tr>
+    <tr><td>总时长上限</td><td>5 分钟</td><td>超时改文案"稍后在订单页看"，不无限轮</td></tr>
+    <tr><td>切后台</td><td><code>document.hidden</code> 跳过本轮；切回前台补一次</td><td>不烧请求</td></tr>
+    <tr><td>终态</td><td><code>done</code> / <code>canceled</code> 立即停止</td><td>服务端也做了同样优化：终态不再回查 MCP</td></tr>
+    <tr><td>状态映射</td><td>created / paid / progress / done / canceled</td><td>麦当劳原始状态（waitpay/making/…）→ 5 个对外语义</td></tr>
+  </table>
+  <p>支付卡上固定显示一行：<b>"付款由你完成，我只负责下单。"</b> —— 这是产品红线，也是代码约束（没有任何支付调用）。</p>
+</section>
+
+<!-- ================= 15 ================= -->
+<section id="s15">
+  <h2><span class="no">15</span>三人餐错误复盘（真实案例）</h2>
+  <p><span class="tag new">已修复</span>这是这份文档里唯一一条"完整事故复盘"，因为它把选品引擎的两个结构性缺陷同时暴露了出来。</p>
+
+  <h3>用户看到的东西</h3>
+  <pre>「霜降贴膘3人餐」
+吉士汉堡套餐 ×3        ¥111.0
+草莓新地 ×2             ¥21.0
+─────────────────────────────
+商品合计 ¥132.0（+ 配送 ¥6.0 + 打包 ¥3.0）
+
+<span class="c">菜单上明明有「畅享吃鸡三人餐」，为什么没优先选它？</span></pre>
+
+  <h3>两个独立的根因（都不在打分权重上）</h3>
+  <table>
+    <tr><th style="width:34px">#</th><th style="width:170px">缺陷</th><th>后果</th></tr>
+    <tr>
+      <td>1</td>
+      <td><code>servesOf()</code> 把"三人"并进了 <code>return 4</code></td>
+      <td>三人餐被当成"够 4 人吃"，打分只给 +1；而单人套餐命中「应季·汉堡」拿 +3 —— <b>三人餐永远排不过单人套餐</b>。份数按 <code>ceil(3/4)=1</code> 算、记账按 4 人份算，账面上"够吃"了，实际三个人只有一份套餐，于是又补 3 份单人套餐</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td><code>isCombo()</code> 白名单里没有裸的「N 人餐」</td>
+      <td>「畅享吃鸡三人餐」被判成<b>单品</b>：第一轮"整餐优先"收不到它、第二轮"补主食"认不出它（名字里没有堡/饭/卷/鸡块），最终从第三轮"补配角"混进来，被当成一份小食 —— 于是出现 <b>3 个单人套餐 + 1 份三人餐 = 6 人份</b>，账还按"够 4 人吃"记</td>
+    </tr>
+  </table>
+
+  <div class="callout red">
+    <b>为什么"调权重"救不了：</b>分数是加权求和，节气关键词（+3）、口味（+4）这些项对单人套餐同样生效。一旦菜单里有个名字带"辣/甜/板烧"的单人套餐（+4），它 ×3 份就把三个人名额全占了。<b>这不是权重没调好，而是两类商品根本不可比</b> —— "一份 3 人份的餐"和"3 份 1 人餐"在总价、剩菜、饮品份数上完全不同。所以最终做成<b>结构优先级</b>（tierOf），而不是继续在分数上加权重。
+  </div>
+
+  <h3>修复后的三轮验证</h3>
+  <p>第一次修复其实<b>更糟</b>：¥161.9。三人餐已自带 3 份小食，但"每人 1 份 + 1 份余量"的小食规则还留着余量，补位环节挑中了 ¥39.9 的「麦麦炸鸡5拼」。因此还改了三处：</p>
+  <table>
+    <tr><th style="width:200px">改动</th><th>详情</th></tr>
+    <tr><td>3 人以上取消小食余量</td><td><code>side: people &lt;= 2 ? people + 1 : people</code></td></tr>
+    <tr><td>配角价格上限改为 60% 比例</td><td>绝对比较会放过 ¥39.9 &lt; ¥55.9 的拼盘，实测就是这么漏过去的</td></tr>
+    <tr><td>理由文案不再写死"双人餐"</td><td>曾出现「畅享吃鸡三人餐 · 双人餐，一份够 3 人」—— 商品名和理由自相矛盾</td></tr>
+  </table>
+
+  <h3>真实外卖链路的最终对比（厦门塔埔路店，走 HTTP 流水线）</h3>
+  <table>
+    <tr><th style="width:70px">人数</th><th>修复前</th><th>修复后</th></tr>
+    <tr><td><b>3</b></td><td class="no-g">吉士汉堡套餐×3 + 新地×2 = <b>¥132</b>（没有三人餐）</td><td class="ok">畅享吃鸡三人餐×1 + 草莓新地×2 = <b>¥122</b></td></tr>
+    <tr><td>2</td><td>—</td><td>快乐吃鸡双人餐×1 + 新地 + 麦乐鸡 = ¥93.4</td></tr>
+    <tr><td>1</td><td>—</td><td>吉士汉堡套餐 + 新地 + 麦乐鸡 = ¥60.5</td></tr>
+    <tr><td>4</td><td>—</td><td>吃鸡盛宴四人餐×1 + 新地×2 = ¥134</td></tr>
+  </table>
+
+  <div class="callout green">
+    <b>这次事故留下的两个长期资产：</b><br>
+    ① <b>人数档位是硬编码的商品属性</b>，不是"能喂几个人"的近似值。想近似也不行，因为档位会渗进打分、份数、记账三个地方。<br>
+    ② <b>算术归算术，模型归模型。</b>所以后来加了 <code>structuralCheck()</code> —— 即使模型复核挂了、判错了、超时了，人数对不对这件事仍然由代码保证。测试总数从 310 涨到 <b>311</b>，其中 <code>selector.test.ts</code> 收了一份真实菜单 fixture 锁住三人场景。
+  </div>
+</section>
+
+<!-- ================= 16 ================= -->
+<section id="s16">
+  <h2><span class="no">16</span>实现 vs 契约：11 个不一致</h2>
+  <p>以下都是逐行核对后发现"代码实际行为 ≠ 契约/前端预期"的地方，不是设计建议，是现状。</p>
+
+  <table>
+    <tr><th style="width:30px">#</th><th style="width:158px">现象</th><th>原因与影响</th><th style="width:160px">位置</th></tr>
+    <tr>
+      <td>1</td>
+      <td><span class="tag gap">GAP</span>打字机永远不生效</td>
+      <td><code>delta</code> 事件类型在契约、路由、前端都实现了（<code>typeInto</code> 逐字追加），但 <code>runChat</code> 里<b>从未 yield</b>。<code>typingText</code> 恒为空，所以 hook 是一次性出现的。要么删掉 delta，要么在 compose 后按字符切片 yield。</td>
+      <td><code>orchestrator.ts</code> 全文无 <code>delta</code></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td><span class="tag gap">GAP</span>数据来源角标恒为"实时"</td>
+      <td><code>dataSource</code> 初始化成 <code>'mcp'</code> 后再没被赋值。命中 TTL 缓存时前端仍显示"已实时核对门店菜单"，<code>'cache'</code> 分支永远走不到。缓存命中信息其实在网关的 <code>CallMeta.cached</code> 里，只是没往上传。</td>
+      <td><code>orchestrator.ts:309</code></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td><span class="tag gap">GAP</span>优惠券只是动画</td>
+      <td>拉了 <code>available-coupons</code>，有券就推一个 <code>stage: coupon</code>，但券<b>从未参与算价</b>。<code>ChatReply.total</code> 的注释写着"券后实付"，名不副实。</td>
+      <td><code>orchestrator.ts:554</code></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td><span class="tag gap">GAP</span>「换一换」不记得上一单</td>
+      <td>前端把输入框填成「换一批，别重复刚才的」再发一次，服务端没有任何"排除上一单"的逻辑（无 history 参数）。所以很可能推出同一份菜单 —— 文案承诺了做不到的事。</td>
+      <td><code>ChatView.vue:566 fillRefine</code></td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td><span class="tag gap">GAP</span><code>knowledge</code> stage 声明了但从不发</td>
+      <td><code>StageName</code> 里有它、<code>stage-texts.ts</code> 里有 3 条文案，但 <code>runChat</code> 里没有这一行 —— 知识层是完全静默的。契约里 7 个 stage，实际最多只出现 6 个。</td>
+      <td><code>contract.ts:542</code> vs <code>orchestrator.ts</code></td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td><span class="tag gap">GAP</span><code>auto_confirm</code> 存了没用</td>
+      <td>能读写、能在 <code>/api/me</code> 返回，但下单链路完全不读它 —— 永远要手动点"确认下单"。免确认一键下单实际未实现。</td>
+      <td><code>auth.service.ts:152</code></td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td><span class="tag gap">GAP</span><code>softBudget</code> 产出但没人消费</td>
+      <td>旁路把推出来的预算放进 <code>intent.softBudget</code>，但 <code>SelectInput</code> 没有这个字段，<code>selectProducts</code> 也不读它。所以"按你平时的价位配一单"这层意图<b>实际不生效</b>（注：这比让它进 <code>explicit.budget</code> 安全得多，但确实是空转）。</td>
+      <td><code>llm-intent.service.ts:615</code></td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td><span class="tag gap">GAP</span>三个字段产出后无消费者</td>
+      <td><code>orderIntent</code>（是否在表达"要点一单"）、<code>moodConfidence</code>（情绪置信度）、<code>targetDate</code>（明天/后天）都被解析出来并写进 <code>ParsedIntent</code>，但下游没有任何代码读它们。另外 <code>needsClarify</code> 在新架构下恒 false，实际已退役（反问改由 <code>clarity + sideChannelEmpty</code> 决定）。</td>
+      <td><code>contract.ts:315/327</code></td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td><span class="tag gap">GAP</span>访客先烧两次 LLM 才被告知没登录</td>
+      <td>访客会先跑 <code>intent</code>（1 次 LLM）、模糊时再跑 <code>context</code>（第 2 次 LLM）、跑到 menu 层才遇到 <code>NEED_LOGIN</code> 终止。视觉上像"想了半天才告诉我没登录"，实际还白烧了模型额度。登录检查可以前置到流水线第一行。</td>
+      <td><code>orchestrator.ts:317</code></td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td><span class="tag gap">GAP</span>外送划线价会被覆盖两次</td>
+      <td><code>priceDelivery()</code> 把 <code>calculate-price</code> 的 <code>original</code>（含配送费口径）写进 <code>originalTotal</code>，随后 <code>originalTotal = finalTotals.original</code> 又用<b>商品原价合计</b>覆盖一次。只影响"原价 ¥xx"的划线展示，不影响实付。</td>
+      <td><code>orchestrator.ts:582 / 644</code></td>
+    </tr>
+    <tr>
+      <td>11</td>
+      <td><span class="tag gap">GAP</span>旁路"读心结论"到不了文案层</td>
+      <td><code>contextRead</code>（"ta 大概是加班到现在，想吃口热的"）只传给了复核环节，<code>buildUserPrompt</code> 不读它。所以旁路想清楚的事，最终<b>说不出那句最该说的话</b> —— 这恰恰是"懂你"值钱的地方。</td>
+      <td><code>menu-review.service.ts:270</code></td>
+    </tr>
+  </table>
+
+  <div class="callout green">
+    <b>另外三个"不是问题但要知道"的点：</b><br>
+    ① 标题/文案里的节气、星座、水逆全部由<b>静态数据表</b> + 纯函数算出（<code>data/solar-terms.ts</code> 等），不联网、不调模型，所以演示绝不会因为网络或模型抽风而变样。<br>
+    ② 到店菜单走了 TTL 缓存（10 分钟），同一门店连续问同一句话，第二次的 MCP 调用几乎为 0，但用户看到的价格仍是 10 分钟内的真实数据。<br>
+    ③ MCP 目录里共 <b>35 个工具</b>、6 个分组（定位门店 / 菜单选品 / 优惠券 / 点餐交易 / 积分商城 / 活动派对），其中 <b>7 个写操作</b>永不缓存且必须显式确认。产品链路（对话 + 下单）只用到其中 <b>11 个</b>：<code>query-meals</code> / <code>query-nearby-stores</code> / <code>available-coupons</code> / <code>list-nutrition-foods</code> / <code>delivery-query-addresses</code> / <code>delivery-query-stores</code> / <code>delivery-create-address</code> / <code>calculate-price</code> / <code>create-order</code> / <code>query-order</code> / <code>cancel-order</code>；其余 24 个通过 <code>/api/explorer</code> 的 21 个端点暴露成数据浏览面板。
+  </div>
+</section>
+
+<!-- ================= 17 ================= -->
+<section id="s17">
+  <h2><span class="no">17</span>错误分支总表</h2>
+  <table>
+    <tr><th style="width:150px">错误码</th><th style="width:70px">HTTP</th><th>触发点</th><th>前端动作</th></tr>
+    <tr><td><code>BAD_REQUEST</code></td><td>400</td><td>参数校验失败 / 地址参数不全 / 手机号格式 / 购物车为空时结算</td><td>toast 原消息</td></tr>
+    <tr><td><code>UNAUTHORIZED</code></td><td>401/403</td><td>无 JWT、JWT 过期、chat 归属不符</td><td>错误气泡 + "重新登录"</td></tr>
+    <tr><td><code>TOKEN_INVALID</code></td><td>401</td><td>MCP 401/403、中文鉴权失效文案、解密失败</td><td>"重新登录"按钮（并销毁连接池）</td></tr>
+    <tr><td><code>NEED_LOGIN</code></td><td>流内</td><td>访客/未登录就要查真实菜单</td><td>错误气泡；访客常驻 upsell 条</td></tr>
+    <tr><td><code>NEED_LOCATION</code></td><td>流内</td><td>到店但记忆里没有任何城市</td><td>"去设置定位"→ /memory</td></tr>
+    <tr><td><code>NEED_ADDRESS</code></td><td>流内</td><td>外送但没有可用的配送地址</td><td>展开地址表单 + "填一个配送地址"</td></tr>
+    <tr><td><code>MCP_DOWN</code></td><td>503/流内</td><td>超时、连接错、搜不到门店、菜单为空、选不出合适组合、MCP 业务失败</td><td>错误气泡（文案带具体原因）</td></tr>
+    <tr><td><code>LLM_FAILED</code></td><td>流内</td><td>模型不可用 —— <b>实际不会冒到用户面前</b>，三处 LLM 调用（intent / context / compose）都在本地降级了</td><td>—</td></tr>
+    <tr><td><code>RATE_LIMITED</code></td><td>429</td><td>网关每用户 20/min、全站 550/min、路由 10/min</td><td>错误气泡（网关层有缓存会先吃缓存）</td></tr>
+    <tr><td><code>GUEST_LIMIT_REACHED</code></td><td>429</td><td>访客当日额度用完</td><td>upsell 块："登录一下，我就能继续聊"</td></tr>
+    <tr><td><code>ORDER_CONFLICT</code></td><td>409</td><td>菜单变更、价格变动 &gt;1 元、缺 productCode、换履约方式、缺 takeWayCode</td><td>确认条变红 + "按新价下单"</td></tr>
+    <tr><td><code>ORDER_REJECTED</code></td><td>409</td><td>门店/账户明确拒绝（限购、售罄、打烊），<b>重试没用</b></td><td>不显示重试按钮，只展示具体原因</td></tr>
+    <tr><td><code>NOT_FOUND</code></td><td>404</td><td>chat/order 不存在</td><td>轮询里显示"查不到这个订单了"并停轮</td></tr>
+    <tr><td><code>INTERNAL</code></td><td>500</td><td>未捕获异常</td><td>统一文案"我这边出了点小状况"</td></tr>
+  </table>
+
+  <div class="callout">
+    <b><code>ORDER_CONFLICT</code> 和 <code>ORDER_REJECTED</code> 的区别只在"要不要重试"：</b>CONFLICT 是"我们这边状态对不上，刷新可能就好"；REJECTED 是对方说了不行，重试没用，前端不该给重试按钮。
+  </div>
+</section>
+
+<!-- ================= 18 ================= -->
+<section id="s18">
+  <h2><span class="no">18</span>参数与阈值速查</h2>
+  <div class="grid3">
+    <div class="mini">
+      <h4>时间</h4>
+      <p>MCP 阶段整体 <code>45s</code></p>
+      <p>读工具默认 <code>15s</code> · 写工具 <code>30s</code></p>
+      <p>算价 <code>20s</code> · 下单 <code>30s</code></p>
+      <p>SSE 心跳 <code>15s</code></p>
+      <p>连接池空闲回收 <code>10min</code>（上限 50）</p>
+    </div>
+    <div class="mini">
+      <h4>LLM 三处调用</h4>
+      <p><b>intent</b>：temp <code>0.15</code> / <code>1000</code> tok / <code>9s</code></p>
+      <p><b>context</b>：temp <code>0.5</code> / <code>900</code> tok / <code>9s</code></p>
+      <p><b>review</b>：temp <code>0.1</code> / <code>2000</code> tok / <code>12s</code></p>
+      <p><b>compose</b>：temp <code>0.9</code> / <code>600</code> tok / <code>20s</code></p>
+      <p style="color:var(--red-dark)">全部失败即降级，无一冒到用户</p>
+    </div>
+    <div class="mini">
+      <h4>缓存 TTL</h4>
+      <p>query-meals <code>10min</code></p>
+      <p>query-nearby-stores <code>5min</code></p>
+      <p>delivery-query-stores / addresses <code>5min</code></p>
+      <p>available-coupons <code>5min</code></p>
+      <p>list-nutrition-foods <code>24h</code></p>
+      <p>calculate-price / 订单 / 写操作 <b>永不缓存</b></p>
+      <p>缓存容量 <code>500</code> 条</p>
+    </div>
+    <div class="mini">
+      <h4>限流</h4>
+      <p>/api 全局 <code>30/min/IP</code></p>
+      <p>/api/chat <code>10/min/IP</code></p>
+      <p>购物车加购 <code>60/min</code> · 改数量 <code>120/min</code> · 搜索 <code>40/min</code></p>
+      <p>下单 / 购物车结算 <code>10/min</code></p>
+      <p>网关每用户 <code>20/min</code></p>
+      <p>网关全局 <code>550/min</code>（平台 600）</p>
+      <p>访客 <code>1 次/日/IP</code></p>
+    </div>
+    <div class="mini">
+      <h4>选品</h4>
+      <p>目标 SKU 数 4 / 5 / 6 / <code>min(9, 4+n)</code></p>
+      <p>主食份数 <code>min(people, 4)</code></p>
+      <p>多人餐份数 <code>ceil(people / serves)</code></p>
+      <p>饮品甜品 <code>ceil(people/2)</code></p>
+      <p>主食 SKU 上限 1 / 2 / 3</p>
+      <p>小食上限 <code>people+1</code>（≤2 人）/ <code>people</code>（≥3 人）</p>
+      <p>甜品上限 1（≤4 人）/ 2</p>
+      <p>配角价格 ≤ 主餐单价 <code>×0.6</code></p>
+      <p>预算重选余量 <code>×0.97</code> · 组单最低 <code>¥10</code></p>
+    </div>
+    <div class="mini">
+      <h4>前端轮询 / 交互</h4>
+      <p>前 30s 每 <code>3s</code> · 之后每 <code>10s</code></p>
+      <p>上限 <code>5min</code></p>
+      <p>后台暂停、回前台补一次</p>
+      <p>打字机字符间隔 <code>24ms</code>（未启用）</p>
+      <p>购物车指令识别上限 <code>40 字</code></p>
+      <p>反问最多 <code>1 次</code>（读 chats 判重）</p>
+    </div>
+  </div>
+
+  <h3>一句话总结现状</h3>
+  <div class="callout">
+    这条 loop 的<b>"想"和"算"是完全确定的</b>（规则 + 静态知识 + 真实 MCP 数据 + 可复现打分 + 一道算术体检），<b>"判断"交给模型但有边界</b>（clarity 和 review 两处，都没有选品权），<b>"说"才完全交给模型</b>。它能保证不编价格、不编菜单、不越权下单、不把 3 个人喂成 6 人份；目前欠的是<b>券真正参与算价</b>（#3）、<b>换一换的记忆</b>（#4）、<b>旁路结论到不了文案层</b>（#11）和<b>角标诚实度</b>（#2）—— 这四件事都不影响"能点成一单"，只影响"聊得像不像人"和"省钱感"。
+  </div>
+</section>
+
+</main>
+</div>
+
+<footer>
+  本文基于 <code>server/src/services/orchestrator.ts</code>（1527 行）、<code>selector.service.ts</code>（960 行）、<code>menu-review.service.ts</code>（629 行）、<code>llm-intent.service.ts</code>（642 行）、<code>order.service.ts</code>（718 行）、<code>cart.service.ts</code>（701 行）、<code>mcp/gateway.ts</code>（466 行）、<code>web/src/views/ChatView.vue</code>（1758 行）、<code>web/src/components/CartPanel.vue</code>（659 行）等实际代码整理，行号对应当前工作区版本。单测 311 通过 / 57 套件（<code>tsx --test tests/*.test.ts</code>）。
+</footer>
+
+</body>
+</html>
